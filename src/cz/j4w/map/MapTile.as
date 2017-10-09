@@ -58,7 +58,7 @@ package cz.j4w.map {
 				super.loader_completeHandler(event);
 				visible = true;
 				alpha = 0;
-				Starling.juggler.tween(this, .2, {alpha: 1});
+				Starling.juggler.tween(this, .1, {alpha:1});	
 			}
 		}
 	

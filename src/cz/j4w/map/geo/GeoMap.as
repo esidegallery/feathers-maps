@@ -1,10 +1,13 @@
 package cz.j4w.map.geo {
-	import cz.j4w.map.Map;
-	import cz.j4w.map.MapMarker;
-	import cz.j4w.map.MapOptions;
+	
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
-	import starling.animation.Tween;
+	
+	import cz.j4w.map.Map;
+	import cz.j4w.map.MapCircleOverlay;
+	import cz.j4w.map.MapMarker;
+	import cz.j4w.map.MapOptions;
+	
 	import starling.display.DisplayObject;
 	
 	/**
@@ -35,9 +38,33 @@ package cz.j4w.map.geo {
 		public function addMarkerLongLat(id:String, long:Number, lat:Number, displayObject:DisplayObject, data:Object = null):MapMarker {
 			return addMarker(id, GeoUtils.lon2x(long), GeoUtils.lat2y(lat), displayObject, data);
 		}
+		public function addCircleLongLatRad($id:String, $long:Number, $lat:Number, $radius:Number, $circle:DisplayObject, $data:Object = null):MapCircleOverlay {
+			
+			
+			var latlon90:Point = GeoUtils.destionationDeg($long,$lat, 90,$radius);
+			
+			
+			var edgeLon:Number = latlon90.x;
+			var edgeLat:Number = latlon90.y;
+			
+			var midX:Number = GeoUtils.lon2x($long);
+			var midY:Number = GeoUtils.lat2y($lat);
+			
+			var edgeX:Number = GeoUtils.lon2x(edgeLon);
+			var edgeY:Number = GeoUtils.lat2y(edgeLat);
+			
+			var numRadiusDistance:Number = (midX>edgeX)?midX-edgeX:edgeX-midX;
+			
+			var numDistance:Number = numRadiusDistance*2;
+			
+			$circle.width = $circle.height = numDistance;
+			
+			
+			return addCircleOverlay($id, GeoUtils.lon2x($long), GeoUtils.lat2y($lat), $circle, $data);
+		}
 		
 		public function getCenterLongLat():Point {
-			var center:Point = getCenter();
+			var center:Point = getCenter().clone();
 			center.x = GeoUtils.x2lon(center.x);
 			center.y = GeoUtils.y2lat(center.y);
 			return center;
@@ -47,8 +74,13 @@ package cz.j4w.map.geo {
 			setCenterXY(GeoUtils.lon2x(long), GeoUtils.lat2y(lat));
 		}
 		
-		public function tweenToLongLat(long:Number, lat:Number, scale:Number = 1, time:Number = 3):Tween {
-			return tweenTo(GeoUtils.lon2x(long), GeoUtils.lat2y(lat), scale, time);
+		public function tweenToLongLat($long:Number, $lat:Number, $zoom:int = -1, $time:Number = 3):uint {
+			
+			if($zoom==-1)$zoom=this.zoom;
+			var numScale:Number = this._zoomToScale($zoom);
+			
+			
+			return tweenTo(GeoUtils.lon2x($long), GeoUtils.lat2y($lat), scale, $time);
 		}
 	
 	}

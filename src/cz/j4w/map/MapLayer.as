@@ -1,7 +1,9 @@
 package cz.j4w.map {
-	import feathers.controls.ImageLoader;
 	import flash.geom.Rectangle;
 	import flash.utils.Dictionary;
+	
+	import feathers.controls.ImageLoader;
+	
 	import starling.display.BlendMode;
 	import starling.display.Sprite;
 	import starling.events.EnterFrameEvent;
@@ -107,6 +109,16 @@ package cz.j4w.map {
 			tile.x = x * actualTileSize;
 			tile.y = y * actualTileSize;
 			tile.scaleX = tile.scaleY = scale;
+			
+			var numExtra:Number=0;
+			switch(scale){
+				case 1:
+					numExtra = 5;
+					break;
+				
+			}
+			tile.width = tile.width+numExtra;			
+			tile.height= tile.height+numExtra;
 			addChild(tile);
 			
 			tilesDictionary[key] = tile;

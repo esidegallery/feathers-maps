@@ -9,7 +9,7 @@ package cz.j4w.map.geo {
 		public static const RAD_DEG:Number = 180 / PI;
 		private static const PI:Number = Math.PI;
 		
-		public static const EARTH_RADIUS:uint = 6371000; // in meters
+		public static const EARTH_RADIUS:uint = 6371000; // in meters 6379100
 		
 		private static const COS_1_EARTH_RADIUS:Number = Math.cos(1 / EARTH_RADIUS);
 		private static const SIN_1_EARTH_RADIUS:Number = Math.sin(1 / EARTH_RADIUS);

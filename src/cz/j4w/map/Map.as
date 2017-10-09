@@ -1,12 +1,16 @@
 package cz.j4w.map {
-	import cz.j4w.map.events.MapEvent;
-	import feathers.core.FeathersControl;
+	
+	
 	import flash.events.MouseEvent;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
 	import flash.utils.Dictionary;
+	
+	import cz.j4w.map.events.MapEvent;
+	
+	import feathers.core.FeathersControl;
+	
 	import starling.animation.Transitions;
-	import starling.animation.Tween;
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
 	import starling.display.Quad;
@@ -20,45 +24,57 @@ package cz.j4w.map {
 	 * Main Starling class. Provides demo Feathers UI for map controll.
 	 */
 	public class Map extends FeathersControl {
-		private var currentTween:Tween;
 		private var tweenTransition:Function = Transitions.getTransition(Transitions.EASE_IN_OUT);
-		
+		private var currentTween:uint;
 		protected var mapTilesBuffer:MapTilesBuffer;
 		
 		protected var mapOptions:MapOptions;
-		protected var mapContainer:Sprite;
-		protected var markersContainer:Sprite;
-		protected var touchSheet:TouchSheet;
-		protected var markers:Dictionary;
+		protected var _mapContainer:Sprite;
+		protected var _circlesContainer:Sprite;
+		protected var _markersContainer:Sprite;
+		protected var _touchSheet:TouchSheet;
+		protected var _markers:Dictionary;
+		protected var _circles:Dictionary;
 		
 		protected var layers:Array;
 		protected var mapViewPort:Rectangle;
 		protected var centerBackup:Point;
 		
+		private var _vecMarkerDisplays:Vector.<DisplayObject>;
+		private var _vecCircleDisplays:Vector.<DisplayObject>;
+		
 		private var _scaleRatio:int;
 		private var _zoom:int;
+		private var _pntCenter:Point;
 		
-		public function Map(mapOptions:MapOptions) {
-			this.mapOptions = mapOptions;
+		public function Map($mapOptions:MapOptions) {
+			this.mapOptions = $mapOptions;
+			
 		}
 		
 		override protected function initialize():void {
 			layers = [];
-			
+			this._vecMarkerDisplays = new Vector.<DisplayObject>();
+			this._vecCircleDisplays = new Vector.<DisplayObject>();
 			mapTilesBuffer = new MapTilesBuffer();
-			markers = new Dictionary();
+			_markers = new Dictionary();
+			_circles = new Dictionary();
 			centerBackup = new Point();
+			this._pntCenter = new Point();
 			mapViewPort = new Rectangle();
-			mapContainer = new Sprite();
-			markersContainer = new Sprite();
-			touchSheet = new TouchSheet(mapContainer, viewPort, mapOptions);
-			addChild(touchSheet);
-			mapContainer.addChild(markersContainer);
+			this._mapContainer = new Sprite();
+			this._markersContainer = new Sprite();
+			this._circlesContainer = new Sprite();
+			_touchSheet = new TouchSheet(this._mapContainer, viewPort, mapOptions);
+			this.addChild(_touchSheet);
+			this._mapContainer.addChild(this._circlesContainer);
+			this._mapContainer.addChild(this._markersContainer);
 			
-			touchSheet.scaleX = touchSheet.scaleY = mapOptions.initialScale || 1;
+			_touchSheet.scaleX = _touchSheet.scaleY = mapOptions.initialScale || 1;
 			
 			if (mapOptions.initialCenter)
 				setCenter(mapOptions.initialCenter);
+			
 			
 			addEventListener(EnterFrameEvent.ENTER_FRAME, onEnterFrame);
 			addEventListener(TouchEvent.TOUCH, onTouch);
@@ -77,39 +93,56 @@ package cz.j4w.map {
 		}
 		
 		protected function update():void {
-			getBounds(touchSheet, mapViewPort); // calculate mapViewPort before bounds check
-			touchSheet.applyBounds();
-			getBounds(touchSheet, mapViewPort); // calculate mapViewPort after bounds check
-			updateMarkers();
+			getBounds(_touchSheet, mapViewPort); // calculate mapViewPort before bounds check
+			_touchSheet.applyBounds();
+			getBounds(_touchSheet, mapViewPort); // calculate mapViewPort after bounds check
+			updateMarkersAndCircles();
 			updateZoomAndScale();
 		}
 		
-		protected function updateMarkers():void {
-			var n:int = markersContainer.numChildren;
-			var sx:Number = 1 / touchSheet.scaleX;
-			for (var i:int = 0; i < n; i++) {
-				var marker:DisplayObject = markersContainer.getChildAt(i); // scaling markers always to be 1:1
+		protected function updateMarkersAndCircles():void {
+			var n:int = _markersContainer.numChildren;
+			var sx:Number = 1 / _touchSheet.scaleX;
+			var i:int=0;
+			var marker:DisplayObject;
+			for (i = 0; i < n; i++) {
+				marker = _markersContainer.getChildAt(i); // scaling markers always to be 1:1
 				marker.scaleX = marker.scaleY = sx;
 				marker.visible = mapViewPort.intersects(marker.bounds);
 			}
-		}
-		
-		public function addLayer(id:String, options:Object = null):MapLayer {
-			if (layers[id]) {
-				trace("Layer", id, "already added.")
-				return layers[id];
+			n = _circlesContainer.numChildren;
+			var circle:DisplayObject;
+			var numCalcSize:Number;
+			var numCircleW:Number;
+			var numCircleWMin:Number = 50;
+			for (i=0; i<n; i++){
+				numCircleW = 798;
+				circle = _circlesContainer.getChildAt(i);
+				numCalcSize = circle.width*_touchSheet.scaleX;
+				
+				
+				circle.visible = mapViewPort.intersects(circle.bounds);
 			}
 			
-			if (!options)
-				options = {};
+		}
+		
+		public function addLayer($id:String, $options:Object = null):MapLayer {
+			if (layers[$id]) {
+				trace("Layer", $id, "already added.")
+				return layers[$id];
+			}
 			
-			var childIndex:uint = options.index >= 0 ? options.index : mapContainer.numChildren;
+			if (!$options)
+				$options = {};
 			
-			var layer:MapLayer = new MapLayer(this, id, options, mapTilesBuffer);
-			mapContainer.addChildAt(layer, childIndex);
-			mapContainer.addChild(markersContainer); // markers are always on top
+			var childIndex:uint = $options.index >= 0 ? $options.index : _mapContainer.numChildren;
 			
-			layers[id] = layer;
+			var layer:MapLayer = new MapLayer(this, $id, $options, mapTilesBuffer);
+			this._mapContainer.addChildAt(layer, childIndex); //add layer			
+			this._mapContainer.addChild(this._circlesContainer); //circles above layers
+			this._mapContainer.addChild(this._markersContainer); //markers above circles
+			
+			layers[$id] = layer;
 			
 			return layer;
 		}
@@ -137,40 +170,106 @@ package cz.j4w.map {
 			return layers[id];
 		}
 		
-		public function addMarker(id:String, x:Number, y:Number, displayObject:DisplayObject, data:Object = null):MapMarker {
-			displayObject.name = id;
-			displayObject.x = x;
-			displayObject.y = y;
-			markersContainer.addChild(displayObject);
+		
+		public function addMarker($id:String, $x:Number, $y:Number, $displayObject:DisplayObject, $data:Object = null):MapMarker {
+			$displayObject.name = $id;
+			$displayObject.x = $x;
+			$displayObject.y = $y;
 			
-			var mapMarker:MapMarker = createMarker(id, displayObject, data);
-			markers[id] = mapMarker;
+			var numLen:int = this._vecMarkerDisplays.length;
+			
+			//find the index to insertAt, based on y
+			var index:int = 0;
+			for(var i:int=0; i<numLen; i++){
+				if($y>this._vecMarkerDisplays[i].y){
+					if(i==numLen-1){ //if none are less than, insert last
+						index=numLen;
+					}
+				}else{
+					index=i;//finally found 1 that it is less than, so use it				
+					break;
+				}				
+			}
+			
+			this._vecMarkerDisplays.insertAt(index, $displayObject);
+			
+			
+			this._markersContainer.addChildAt($displayObject,index);
+			
+			var mapMarker:MapMarker = this.createMarker($id, $displayObject, $data);
+			_markers[$id] = mapMarker;
 			return mapMarker;
 		}
 		
-		protected function createMarker(id:String, displayObject:DisplayObject, data:Object):MapMarker {
-			return new MapMarker(id, displayObject, data);
+		public function addCircleOverlay($id:String, $x:Number, $y:Number, $displayObject:DisplayObject, $data:Object=null):MapCircleOverlay{
+			
+			
+			$displayObject.name =$id;
+			$displayObject.x = $x;
+			$displayObject.y = $y;
+			
+			this._vecCircleDisplays.push($displayObject);
+			
+			this._circlesContainer.addChild($displayObject);
+			
+			var mapCircle:MapCircleOverlay = this.createCircleOverlay($id, $displayObject, $data);
+			_circles[$id] = mapCircle;
+			
+			return mapCircle;
 		}
 		
-		public function getMarker(id:String):MapMarker {
-			return markers[id] as MapMarker;
+		protected function createCircleOverlay($id:String, $displayObject:DisplayObject, $data:Object):MapCircleOverlay {
+			return new MapCircleOverlay($id, $displayObject, $data);
 		}
 		
-		public function removeMarker(id:String):MapMarker {
-			var mapMarker:MapMarker = markers[id] as MapMarker;
+		protected function createMarker($id:String, $displayObject:DisplayObject, $data:Object):MapMarker {
+			return new MapMarker($id, $displayObject, $data);
+		}
+		
+		public function getMarker($id:String):MapMarker {
+			return _markers[$id] as MapMarker;
+		}
+		public function getCircle($id:String):MapCircleOverlay {
+			return _circles[$id] as MapCircleOverlay;
+		}
+		
+		public function removeCircleOverlay($id:String):MapCircleOverlay {
+			var mapCircle:MapCircleOverlay = _circles[$id] as MapCircleOverlay;
+			
+			if (mapCircle) {
+				var displayObject:DisplayObject = mapCircle.displayObject;
+				var index:int = this._vecCircleDisplays.indexOf(displayObject);
+				this._vecCircleDisplays.removeAt(index);
+				displayObject.removeFromParent();
+				delete _circles[$id];
+			}
+			
+			return mapCircle;
+		}
+		public function removeMarker($id:String):MapMarker {
+			var mapMarker:MapMarker = _markers[$id] as MapMarker;
 			
 			if (mapMarker) {
 				var displayObject:DisplayObject = mapMarker.displayObject;
+				var index:int = this._vecMarkerDisplays.indexOf(displayObject);
+				this._vecMarkerDisplays.removeAt(index);
 				displayObject.removeFromParent();
-				delete markers[id];
+				delete _markers[$id];
 			}
 			
 			return mapMarker;
 		}
 		
 		public function removeAllMarkers():void {
-			markersContainer.removeChildren();
-			markers = new Dictionary();
+			_markersContainer.removeChildren();
+			_markers = new Dictionary();
+			this._vecMarkerDisplays.length=0;
+		}
+		
+		public function removeAllCircles():void {
+			_circlesContainer.removeChildren();
+			_circles = new Dictionary();
+			this._vecCircleDisplays.length=0;
 		}
 		
 		public function get viewPort():Rectangle {
@@ -187,7 +286,7 @@ package cz.j4w.map {
 		
 		private function updateZoomAndScale():void {
 			_scaleRatio = 1;
-			var z:int = int(1 / touchSheet.scaleX);
+			var z:int = int(1 / _touchSheet.scaleX);
 			while (_scaleRatio < z) {
 				_scaleRatio <<= 1;
 			}
@@ -200,47 +299,45 @@ package cz.j4w.map {
 			}
 		}
 		
-		public function setCenter(point:Point):void {
-			setCenterXY(point.x, point.y);
+		public function setCenter($point:Point):void {
+			setCenterXY($point.x, $point.y);
 		}
 		
 		public function getCenter():Point {
-			return new Point(mapViewPort.x + mapViewPort.width / 2, mapViewPort.y + mapViewPort.height / 2);
+			_pntCenter.x = mapViewPort.x + mapViewPort.width / 2;
+			_pntCenter.y = mapViewPort.y + mapViewPort.height / 2;
+			return _pntCenter;
 		}
 		
-		public function setCenterXY(x:Number, y:Number):void {
+		public function setCenterXY($x:Number, $y:Number):void {
 			update();
-			centerBackup.setTo(x, y);
-			touchSheet.pivotX = x;
-			touchSheet.pivotY = y;
-			touchSheet.x = width / 2;
-			touchSheet.y = height / 2;
+		
+			centerBackup.setTo($x, $y);
+			_touchSheet.pivotX = $x;
+			_touchSheet.pivotY = $y;
+			_touchSheet.x = this.width / 2;
+			_touchSheet.y = this.height / 2;
 			update();
 		}
 		
-		public function tweenTo(x:Number, y:Number, scale:Number = 1, time:Number = 3):Tween {
-			cancelTween();
-			
+		public function tweenTo($x:Number, $y:Number, $scale:Number = 1, $time:Number = 3):uint {
+			this.cancelTween();
 			var center:Point = getCenter();
-			
-			var tweenObject:Object = {ratio: 0, x: center.x, y: center.y, scale: touchSheet.scaleX};
-			var tweenTo:Object = {ratio: 1, x: x, y: y, scale: scale};
-			currentTween = Starling.juggler.tween(tweenObject, time, {ratio: 1, onComplete: tweenComplete, onUpdate: tweenUpdate, onUpdateArgs: [tweenObject, tweenTo]}) as Tween;
-			
-			return currentTween;
+			var tweenObject:Object = {ratio: 0, x: center.x, y: center.y, scale: _touchSheet.scaleX};
+			var tweenTo:Object = {ratio: 1, x: $x, y: $y, scale: $scale};
+			this.currentTween = Starling.juggler.tween(tweenObject, $time, {ratio: 1, onComplete: tweenComplete, onUpdate: tweenUpdate, onUpdateArgs: [tweenObject, tweenTo]});
+			return this.currentTween;
 		}
 		
-		public function cancelTween():void {
-			if (currentTween) {
-				Starling.juggler.remove(currentTween);
-				currentTween = null;
+		public function cancelTween():void {			
+			if (this.currentTween!=0) {
+				Starling.juggler.removeByID(this.currentTween);
+				this.currentTween = 0;
 			}
-		}
-		
+		}		
 		public function isTweening():Boolean {
-			return currentTween != null;
-		}
-		
+			return currentTween != 0;
+		}		
 		protected function tweenUpdate(tweenObject:Object, tweenTo:Object):void {
 			// scale tween is much slower then position
 			
@@ -252,13 +349,13 @@ package cz.j4w.map {
 			var currentX:Number = tweenObject.x + (tweenTo.x - tweenObject.x) * r2;
 			var currentY:Number = tweenObject.y + (tweenTo.y - tweenObject.y) * r2;
 			
-			touchSheet.scaleX = touchSheet.scaleY = currentScale;
+			_touchSheet.scaleX = _touchSheet.scaleY = currentScale;
 			setCenterXY(currentX, currentY);
 		}
 		
 		protected function tweenComplete():void {
-			Starling.juggler.remove(currentTween);
-			currentTween = null;
+			Starling.juggler.removeByID(this.currentTween);
+			this.currentTween = 0;
 		}
 		
 		//*************************************************************//
@@ -266,7 +363,9 @@ package cz.j4w.map {
 		//*************************************************************//
 		
 		private function onEnterFrame(e:EnterFrameEvent):void {
-			update();
+			if(this.isEnabled){
+				update();
+			}
 		}
 		
 		private function onTouch(e:TouchEvent):void {
@@ -274,32 +373,76 @@ package cz.j4w.map {
 			if (touch)
 				cancelTween();
 			
-			touch = e.getTouch(markersContainer, TouchPhase.ENDED);
+			touch = e.getTouch(_markersContainer, TouchPhase.ENDED);
 			if (touch) {
 				var displayObject:DisplayObject = touch.target;
-				if (displayObject && displayObject.parent == markersContainer) {
-					var marker:MapMarker = getMarker(displayObject.name);
+				if (displayObject && displayObject.parent.parent == _markersContainer) {
+					var marker:MapMarker = getMarker(displayObject.parent.name);
 					dispatchEvent(new MapEvent(MapEvent.MARKER_TRIGGERED, false, marker));
 				}
 			}
 		}
 		
 		private function onNativeStageMouseWheel(e:MouseEvent):void {
-			var point:Point = globalToLocal(new Point(Starling.current.nativeStage.mouseX, Starling.current.nativeStage.mouseY));
 			
-			if (bounds.containsPoint(point)) {
-				point.x -= width / 2;
-				point.y -= height / 2;
+			if(this.isEnabled){
 				
-				var center:Point = getCenter();
-				center.x += point.x / touchSheet.scaleX;
-				center.y += point.y / touchSheet.scaleY;
+				/*var point:Point = globalToLocal(new Point(Starling.current.nativeStage.mouseX, Starling.current.nativeStage.mouseY));
 				
-				var newScale:Number = touchSheet.scaleX / (e.delta > 0 ? 0.5 : 2);
-				newScale = Math.max(mapOptions.minimumScale, newScale);
-				newScale = Math.min(mapOptions.maximumScale, newScale);
-				tweenTo(center.x, center.y, newScale, .3);
+				point.x = point.x*MainData.UNSCALE;
+				point.y = point.y*MainData.UNSCALE;
+				
+				if(point.x>bounds.x && point.x<bounds.x+bounds.width){
+					
+					if(e.delta>0){
+						this.zoomIn();
+					}else{
+						this.zoomOut(); 
+					}
+				}*/
+				
+				if(e.delta>0){
+					this.zoomIn();
+				}else{
+					this.zoomOut(); 
+				}
 			}
+			
+		}
+		protected function _zoomInOut($in:Boolean=true):void{
+			trace("ZOOM");
+			var center:Point = getCenter();
+			var newScale:Number = _touchSheet.scaleX / ($in?0.5:2); //in is 0.5, out is 2
+			newScale = Math.max(mapOptions.minimumScale, newScale);
+			newScale = Math.min(mapOptions.maximumScale, newScale);
+			tweenTo(center.x, center.y, newScale, 0.3);
+		}
+		public function zoomIn():void{
+			this._zoomInOut(true);
+		}
+		public function zoomOut():void{
+			this._zoomInOut(false);
+			
+		}
+		protected function _zoomToScale($lvl:int):Number{
+			var numScale:Number = 1;
+			if($lvl<0)$lvl=1;
+			if($lvl>18)$lvl=18;
+			var numA:Number = $lvl-1;
+			for(var i:int=0; i<numA; i++){
+				numScale = numScale/2;
+			}
+			
+			return numScale;
+		}
+		
+		public function setZoom($lvl:int, $speed:Number=0.3):void{
+			var center:Point = getCenter();
+			
+			var numScale:Number = this._zoomToScale($lvl);
+			numScale = Math.max(mapOptions.minimumScale, numScale);
+			numScale = Math.min(mapOptions.maximumScale, numScale);
+			tweenTo(center.x, center.y, numScale, $speed);
 		}
 		
 		private function sortMarkersFunction(d1:DisplayObject, d2:DisplayObject):int {
