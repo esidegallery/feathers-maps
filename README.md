@@ -68,6 +68,7 @@ You can use all the features (mask, filters, rotations, Sprite3D, etc.) of Starl
 + Circle Overlays (lat,long,radius)
 + New Map methods to zoom "map.zoomIn()", "map.zoomOut()", "map.setZoom()"
 + Corrected Tween Overriding.
++ Map Markers now are sorted z-order by the "y"
 
 
 # Circle Overlays
