@@ -5,18 +5,6 @@
 + Corrected Tween Overriding.
 
 
-# Circle Overlays
-```as3
-			var circleTexture:Texture = Texture.fromEmbeddedAsset(CircleClass);
-			
-			for (var i:int = 0; i < 100; i++) {
-				var image:Image = new Image(circleTexture);
-				image.alignPivot(); //align center
-				//radius is in meters
-				geoMap.addCircleLongLatRad("circle" + i, mapOptions.initialCenter.x + .1 - Math.random() * .2, mapOptions.initialCenter.y + .1 - Math.random() * .2, 50, image);
-			}
-```
-
 
 # AS3 Starling/Feathers maps
 Google (and more) tiled-based maps developed directly for Starling and Feathers and optimized for mobile devices (Adobe AIR).
@@ -82,4 +70,17 @@ You can use all the features (mask, filters, rotations, Sprite3D, etc.) of Starl
 + Feathers 3.0 beta
 + AIR 19+
 
+
+
+# Circle Overlays
+```as3
+			var circleTexture:Texture = Texture.fromEmbeddedAsset(CircleClass);
+			
+			for (var i:int = 0; i < 100; i++) {
+				var image:Image = new Image(circleTexture);
+				image.alignPivot(); //align center
+				//radius is in meters
+				geoMap.addCircleLongLatRad("circle" + i, mapOptions.initialCenter.x + .1 - Math.random() * .2, mapOptions.initialCenter.y + .1 - Math.random() * .2, 50, image);
+			}
+```
 
