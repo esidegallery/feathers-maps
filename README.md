@@ -1,11 +1,3 @@
-# Additional Features
- Added by dogofpavlov.
-+ Circle Overlays (lat,long,radius)
-+ New Map methods to zoom "map.zoomIn()", "map.zoomOut()", "map.setZoom()"
-+ Corrected Tween Overriding.
-
-
-
 # AS3 Starling/Feathers maps
 Google (and more) tiled-based maps developed directly for Starling and Feathers and optimized for mobile devices (Adobe AIR).
 
@@ -70,6 +62,12 @@ You can use all the features (mask, filters, rotations, Sprite3D, etc.) of Starl
 + Feathers 3.0 beta
 + AIR 19+
 
+
+# Additional Features
+ Added by dogofpavlov.
++ Circle Overlays (lat,long,radius)
++ New Map methods to zoom "map.zoomIn()", "map.zoomOut()", "map.setZoom()"
++ Corrected Tween Overriding.
 
 
 # Circle Overlays
