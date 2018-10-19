@@ -9,6 +9,7 @@ package cz.j4w.map {
 	import cz.j4w.map.events.MapEvent;
 	
 	import feathers.core.FeathersControl;
+	import feathers.utils.textures.TextureCache;
 	
 	import starling.animation.Transitions;
 	import starling.core.Starling;
@@ -33,6 +34,10 @@ package cz.j4w.map {
 		protected var _circlesContainer:Sprite;
 		protected var _markersContainer:Sprite;
 		protected var _touchSheet:TouchSheet;
+		public function get touchSheet():TouchSheet
+		{
+			return _touchSheet;
+		}
 		protected var _markers:Dictionary;
 		protected var _circles:Dictionary;
 		
@@ -46,6 +51,8 @@ package cz.j4w.map {
 		private var _scaleRatio:int;
 		private var _zoom:int;
 		private var _pntCenter:Point;
+		
+		public var textureCache:TextureCache;
 		
 		public function Map($mapOptions:MapOptions) {
 			this.mapOptions = $mapOptions;
@@ -138,6 +145,7 @@ package cz.j4w.map {
 			var childIndex:uint = $options.index >= 0 ? $options.index : _mapContainer.numChildren;
 			
 			var layer:MapLayer = new MapLayer(this, $id, $options, mapTilesBuffer);
+			layer.textureCache = textureCache;
 			this._mapContainer.addChildAt(layer, childIndex); //add layer			
 			this._mapContainer.addChild(this._circlesContainer); //circles above layers
 			this._mapContainer.addChild(this._markersContainer); //markers above circles
@@ -410,7 +418,7 @@ package cz.j4w.map {
 			
 		}
 		protected function _zoomInOut($in:Boolean=true):void{
-			trace("ZOOM");
+			trace(mapOptions.minimumScale);
 			var center:Point = getCenter();
 			var newScale:Number = _touchSheet.scaleX / ($in?0.5:2); //in is 0.5, out is 2
 			newScale = Math.max(mapOptions.minimumScale, newScale);

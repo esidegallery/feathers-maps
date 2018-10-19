@@ -1,8 +1,10 @@
 package cz.j4w.map {
-	import feathers.controls.ImageLoader;
 	import flash.display.LoaderInfo;
 	import flash.events.Event;
 	import flash.geom.Point;
+	
+	import feathers.controls.ImageLoader;
+	
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
 	

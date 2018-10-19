@@ -113,6 +113,7 @@ package cz.j4w.map {
 					var sizeDiff:Number = currentVector.length / previousVector.length;
 					scaleX *= sizeDiff;
 					scaleY *= sizeDiff;
+					trace(minimumScale.toFixed(6), scaleX.toFixed(6), scaleY.toFixed(6));
 					if (minimumScale && minimumScale > scaleX) {
 						scaleX = scaleY = minimumScale;
 					}
@@ -130,13 +131,18 @@ package cz.j4w.map {
 					viewPort.x = -x;
 					viewPort.y = -y;
 				}
-				if (viewPort.left < movementBounds.left) {
+				
+				if (viewPort.width > movementBounds.width) {
+					this.x += ((viewPort.left - movementBounds.left) + (viewPort.width - movementBounds.width) / 2) * scaleX;
+				} else if (viewPort.left < movementBounds.left) {
 					this.x += (viewPort.left - movementBounds.left) * scaleX;
 				} else if (viewPort.right > movementBounds.right) {
 					this.x += (viewPort.right - movementBounds.right) * scaleX;
 				}
 				
-				if (viewPort.top < movementBounds.top) {
+				if (viewPort.height > movementBounds.height) {
+					this.y += ((viewPort.top - movementBounds.top) + (viewPort.height - movementBounds.height) / 2) * scaleY;
+				} else if (viewPort.top < movementBounds.top) {
 					this.y += (viewPort.top - movementBounds.top) * scaleY;
 				} else if (viewPort.bottom > movementBounds.bottom) {
 					this.y += (viewPort.bottom - movementBounds.bottom) * scaleY;

@@ -18,6 +18,7 @@ package cz.j4w.map {
 		private function checkCurrentlyCommiting():void {
 			for (var i:int = 0; i < 5; i++) {
 				if (currentlyBuffering.length) {
+					trace(currentlyBuffering.length);
 					var mapTile:MapTile = currentlyBuffering.shift();
 					if (mapTile.isDisposed || !mapTile.sourceBackup) {
 						i--;

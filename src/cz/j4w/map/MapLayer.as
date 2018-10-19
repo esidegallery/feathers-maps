@@ -3,6 +3,7 @@ package cz.j4w.map {
 	import flash.utils.Dictionary;
 	
 	import feathers.controls.ImageLoader;
+	import feathers.utils.textures.TextureCache;
 	
 	import starling.display.BlendMode;
 	import starling.display.Sprite;
@@ -24,6 +25,8 @@ package cz.j4w.map {
 		
 		protected var notUsedZoomThreshold:int;
 		protected var maximumZoom:int;
+		
+		public var textureCache:TextureCache;
 		
 		public var debugTrace:Boolean = false;
 		
@@ -104,6 +107,7 @@ package cz.j4w.map {
 			var url:String = urlTemplate.replace("${z}", maximumZoom - zoom).replace("${x}", x).replace("${y}", y);
 			
 			var tile:ImageLoader = mapTilesBuffer.create(x, y, zoom);
+			tile.textureCache = textureCache;
 			tile.source = url;
 			tile.setSize(tileSize, tileSize);
 			tile.x = x * actualTileSize;
@@ -113,7 +117,7 @@ package cz.j4w.map {
 			var numExtra:Number=0;
 			switch(scale){
 				case 1:
-					numExtra = 5;
+//					numExtra = 5;
 					break;
 				
 			}
