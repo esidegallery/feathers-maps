@@ -77,7 +77,7 @@ package cz.j4w.map.geo {
 		public function tweenToLongLat($long:Number, $lat:Number, $zoom:int = -1, $time:Number = 3):uint {
 			
 			if($zoom==-1)$zoom=this.zoom;
-			var numScale:Number = this._zoomToScale($zoom);
+			var numScale:Number = this.zoomToScale($zoom);
 			
 			
 			return tweenTo(GeoUtils.lon2x($long), GeoUtils.lat2y($lat), scale, $time);

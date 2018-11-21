@@ -1,31 +1,169 @@
-package cz.j4w.map {
+package cz.j4w.map 
+{
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
+	
+	import starling.animation.Transitions;
+	import starling.core.Starling;
 	import starling.display.DisplayObject;
 	import starling.display.Sprite;
 	import starling.events.EnterFrameEvent;
+	import starling.events.Event;
 	import starling.events.Touch;
 	import starling.events.TouchEvent;
 	import starling.events.TouchPhase;
+	import starling.utils.MathUtil;
+	import starling.utils.Pool;
 	
 	/**
 	 * ...
 	 * @author Jakub Wagner, J4W
 	 */
-	public class TouchSheet extends Sprite {
-		private var _disableMovement:Boolean;
-		private var _disableRotation:Boolean;
-		private var _disableZooming:Boolean;
-		private var _minimumScale:Number;
-		private var _maximumScale:Number;
-		private var _movementBounds:Rectangle;
-		private var viewPort:Rectangle;
-		private var viewportAutoUpdate:Boolean;
-		private var originalViewPort:Rectangle;
+	public class TouchSheet extends Sprite 
+	{
+		public static const TOUCH_START:String = "touchStart";
+		public static const TOUCH_END:String = "touchEnd";
 		
-		private var movement:Point = new Point();
-		private var decelerationRatio:Number = 0.95;
-		private var touching:Boolean;
+		protected static const MINIMUM_VELOCITY:Number = 0.1;
+		
+		public var disableMovement:Boolean;
+		public var disableRotation:Boolean;
+		public var disableZooming:Boolean;
+		
+		private var _minimumScale:Number;
+		public function get minimumScale():Number
+		{
+			return _minimumScale;
+		}
+		public function set minimumScale(value:Number):void
+		{
+			if (_minimumScale != value)
+			{
+				_minimumScale = value;
+				applyScaleBounds(false);
+				invalidateBounds();
+			}
+		}
+		
+		private var _maximumScale:Number;
+		public function get maximumScale():Number
+		{
+			return _maximumScale;
+		}
+		public function set maximumScale(value:Number):void
+		{
+			if (_maximumScale != value)
+			{
+				_maximumScale = value;
+				applyScaleBounds(false);
+				invalidateBounds();
+			}
+		}
+		
+		private var _elasticity:Number = 0.85;
+		public function get elasticity():Number
+		{
+			return _elasticity;
+		}
+		public function set elasticity(value:Number):void
+		{
+			_elasticity = MathUtil.clamp(value, 0, 1);
+		}
+		
+		private var _decelerationRatio:Number = 0.95;
+		public function get decelerationRatio():Number
+		{
+			return _decelerationRatio;
+		}
+		public function set decelerationRatio(value:Number):void
+		{
+			_decelerationRatio = MathUtil.clamp(value, 0, 1);
+		}
+		
+		private var _movementBounds:Rectangle;
+		public function get movementBounds():Rectangle 
+		{
+			return _movementBounds;
+		}
+		public function set movementBounds(value:Rectangle):void 
+		{
+			_movementBounds = value;
+			invalidateBounds();
+			_snapToBounds = true;
+		}
+		
+		private var _viewPort:Rectangle;
+		public function get viewPort():Rectangle
+		{
+			return _viewPort;
+		}
+		public function set viewPort(value:Rectangle):void
+		{
+			_viewPort = value;
+			invalidateBounds();
+			_snapToBounds = true;
+		}
+		
+		/** Set this when the viewport size changes or when TouchSheet dispatches Event.CHANGE so that movementBounds can be applied. */ 
+		public function setViewportTo(xa:Number, ya:Number, widtha:Number, heighta:Number):void
+		{
+			if (viewPort) 
+			{
+				viewPort.setTo(xa, ya, widtha, heighta);
+			}
+			else
+			{
+				viewPort = new Rectangle(xa, ya, widtha, heighta);
+			}
+			invalidateBounds();
+		}
+		
+		private var _isTouching:Boolean;
+		public function get isTouching():Boolean
+		{
+			return _isTouching;
+		}
+		
+		protected var _isEnabled:Boolean = true;
+		public function get isEnabled():Boolean
+		{
+			return _isEnabled;
+		}
+		public function set isEnabled(value:Boolean):void
+		{
+			_isEnabled = value;
+			if (!_isEnabled)
+			{
+				endTouch();
+			}
+		}
+		
+		protected var _isMoving:Boolean;
+		public function get isMoving():Boolean
+		{
+			return _isMoving;
+		}
+		
+		protected var _isZooming:Boolean;
+		public function get isZooming():Boolean
+		{
+			return _isZooming;
+		}
+		
+		protected var _isRotating:Boolean;
+		public function get isRotating():Boolean
+		{
+			return _isRotating;
+		}
+		
+		private var touchAID:int = -1;
+		private var touchBID:int = -1;
+		
+		private var boundsInvalid:Boolean
+		private var _snapToBounds:Boolean;
+		private var scale2:Number;
+		private var velocity:Point = new Point;
+		private var scaleTweenID:uint;
 		
 		/**
 		 * Image
@@ -36,188 +174,360 @@ package cz.j4w.map {
 		 * 							disableRotation
 		 * 							disableMovement
 		 * 							movementBounds
+		 * 							minimumScale
+		 * 							maximumScale
 		 */
-		public function TouchSheet(contents:DisplayObject, viewPort:Rectangle, params:Object = null) {
-			this.viewPort = viewPort;
-			
-			if (!params)
-				params = {};
+		public function TouchSheet(contents:DisplayObject, viewPort:Rectangle = null, params:Object = null) 
+		{
+			this.viewPort = viewPort || new Rectangle;
+			params ||= {};
 			
 			disableZooming = params.disableZooming ? true : false;
 			disableRotation = params.disableRotation ? true : false;
 			disableMovement = params.disableMovement ? true : false;
-			movementBounds = params.movementBounds;
-			viewportAutoUpdate = params.hasOwnProperty("viewportAutoUpdate") && params.viewportAutoUpdate ? true : false;
 			minimumScale = params.minimumScale;
 			maximumScale = params.maximumScale;
+			movementBounds = params.movementBounds;
 			
-			if (viewportAutoUpdate) {
-				originalViewPort = viewPort.clone();
-			}
+			addChild(contents);
 			
 			addEventListener(TouchEvent.TOUCH, onTouch);
-			addEventListener(EnterFrameEvent.ENTER_FRAME, onEnterFrame);
-			addChild(contents);
+			addEventListener(EnterFrameEvent.ENTER_FRAME, validateNow);
 		}
 		
-		private function onTouch(event:TouchEvent):void {
-			var touches:Vector.<Touch> = event.getTouches(this, TouchPhase.MOVED);
+		private function onTouch(event:TouchEvent):void
+		{
+			if (!isEnabled)
+			{
+				return;
+			}
 			
-			if (touches.length == 0) {
-				if (event.getTouch(this, TouchPhase.ENDED))
-					touching = false;
-			} else if (touches.length == 1) {
-				// one finger touching -> move
-				touches[0].getMovement(parent, movement);
-				if (!disableMovement) {
-					x += movement.x;
-					y += movement.y;
+			var prevAID:int = touchAID;
+			var prevBID:int = touchBID;
+			var prevX:Number = x;
+			var prevY:Number = y;
+			var prevPivotX:Number = pivotX;
+			var prevPivotY:Number = pivotY;
+			
+			// first check if the existing touches ended
+			if (touchBID != -1)
+			{
+				if (event.getTouch(this, TouchPhase.ENDED, touchBID))
+				{
+					touchBID = -1;
 				}
-				touching = true;
-			} else if (touches.length == 2) {
+			}
+			if (touchAID != -1) // we checeked touch b first because a might be replaced by b
+			{
+				if (event.getTouch(this, TouchPhase.ENDED, touchAID))
+				{
+					touchAID = touchBID;
+					touchBID = -1;
+				}
+			}
+			// then, check for new touches, if necessary
+			if (touchAID == -1 || touchBID == -1)
+			{
+				var touches:Vector.<Touch> = event.getTouches(this, TouchPhase.BEGAN);
+				var touchCount:int = touches.length;
+				for (var i:int = 0; i < touchCount; i++)
+				{
+					var touch:Touch = touches[i];
+					if (touchAID == -1)
+					{
+						touchAID = touch.id;
+					}
+					else if (touchBID == -1)
+					{
+						touchBID = touch.id;
+					}
+				}
+			}
+			
+			if (prevAID != touchAID)
+			{
+				trace("A =", touchAID);
+			}
+			if (prevBID != touchBID)
+			{
+				trace("B =", touchBID);
+			}
+			
+			
+			// do a multi-touch gesture if we have enough touches
+			if (touchAID != -1 && touchBID != -1 && (!disableRotation || !disableZooming || !disableMovement))
+			{
 				// two fingers touching -> rotate and scale
-				var touchA:Touch = touches[0];
-				var touchB:Touch = touches[1];
+				startTouch(2);
 				
-				var currentPosA:Point = touchA.getLocation(parent);
-				var previousPosA:Point = touchA.getPreviousLocation(parent);
-				var currentPosB:Point = touchB.getLocation(parent);
-				var previousPosB:Point = touchB.getPreviousLocation(parent);
+				var touchA:Touch = event.getTouch(this, null, touchAID);
+				var touchB:Touch = event.getTouch(this, null, touchBID);
 				
-				var currentVector:Point = currentPosA.subtract(currentPosB);
+				if (!touchA || !touchB || touchA.phase != TouchPhase.MOVED && touchB.phase != TouchPhase.MOVED)
+				{
+					//neither touch moved, so nothing has changed
+					return;
+				}
+				
+				var currentPosA:Point  = touchA.getLocation(stage, Pool.getPoint());
+				var previousPosA:Point = touchA.getPreviousLocation(stage, Pool.getPoint());
+				var currentPosB:Point  = touchB.getLocation(stage, Pool.getPoint());
+				var previousPosB:Point = touchB.getPreviousLocation(stage, Pool.getPoint());
+				
+				var currentVector:Point  = currentPosA.subtract(currentPosB);
 				var previousVector:Point = previousPosA.subtract(previousPosB);
 				
-				var currentAngle:Number = Math.atan2(currentVector.y, currentVector.x);
+				var currentAngle:Number  = Math.atan2(currentVector.y, currentVector.x);
 				var previousAngle:Number = Math.atan2(previousVector.y, previousVector.x);
 				var deltaAngle:Number = currentAngle - previousAngle;
 				
 				// update pivot point based on previous center
-				var previousLocalA:Point = touchA.getPreviousLocation(this);
-				var previousLocalB:Point = touchB.getPreviousLocation(this);
-				if (!disableMovement && !disableZooming) {
-					pivotX = (previousLocalA.x + previousLocalB.x) * 0.5;
-					pivotY = (previousLocalA.y + previousLocalB.y) * 0.5;
-					
-					// update location based on the current center
-					x = (currentPosA.x + currentPosB.x) * 0.5;
-					y = (currentPosA.y + currentPosB.y) * 0.5;
-				}
+				var point:Point = Pool.getPoint(
+					(previousPosA.x + previousPosB.x) * 0.5,
+					(previousPosA.y + previousPosB.y) * 0.5
+				);
+				globalToLocal(point, point);
+				pivotX = point.x;
+				pivotY = point.y;
 				
-				// rotate
-				if (!disableRotation) {
+				// update location based on the current center
+				point.setTo(
+					(currentPosA.x + currentPosB.x) * 0.5,
+					(currentPosA.y + currentPosB.y) * 0.5
+				);
+				parent.globalToLocal(point, point);
+				x = point.x;
+				y = point.y;
+				
+				Pool.putPoint(point);
+				Pool.putPoint(currentPosA);
+				Pool.putPoint(previousPosA);
+				Pool.putPoint(currentPosB);
+				Pool.putPoint(previousPosB);
+				
+				if (!disableRotation && deltaAngle !== 0)
+				{
 					rotation += deltaAngle;
 				}
 				
-				// scale
-				if (!disableZooming) {
-					var sizeDiff:Number = currentVector.length / previousVector.length;
-					scaleX *= sizeDiff;
-					scaleY *= sizeDiff;
-					trace(minimumScale.toFixed(6), scaleX.toFixed(6), scaleY.toFixed(6));
-					if (minimumScale && minimumScale > scaleX) {
-						scaleX = scaleY = minimumScale;
+				var sizeDiff:Number = currentVector.length / previousVector.length;
+				if (!disableZooming && sizeDiff !== 1)
+				{
+					scale2 *= sizeDiff;
+					if (scale2 < minimumScale) 
+					{
+						scale = scale2 + (minimumScale - scale2) * _elasticity;
 					}
-					if (maximumScale && maximumScale < scaleX) {
-						scaleX = scaleY = maximumScale;
+					else if (scale2 > maximumScale)
+					{
+						scale = scale2 - (scale2 - maximumScale) * _elasticity;
+					}
+					else
+					{
+						scale = scale2;
 					}
 				}
 			}
-			applyBounds();
+			else if (touchAID != -1) //single touch gesture
+			{
+				startTouch(1);
+				
+				touchA = event.getTouch(this, null, touchAID);
+				
+				if (!disableMovement)
+				{
+					// one finger touching -> move
+					var delta:Point = touchA.getMovement(stage, Pool.getPoint());
+					if(delta.length !== 0)
+					{
+						x += delta.x;
+						y += delta.y;
+					}
+					Pool.putPoint(delta);
+				}
+			}
+			else
+			{
+				endTouch();
+			}
+			
+			if (_isTouching)
+			{
+				velocity.setTo((x - pivotX) - (prevX - prevPivotX), (y - pivotY) - (prevY - prevPivotY));
+				invalidateBounds();
+			}
 		}
 		
-		public function applyBounds():void {
-			if (movementBounds) {
-				if (viewportAutoUpdate) {
-					viewPort.x = -x;
-					viewPort.y = -y;
+		protected function startTouch(numTouchPoints:int):void
+		{
+			cancelScaleTween();
+			if (!_isTouching)
+			{
+				_isTouching = true;
+				scale2 = scale;
+				dispatchEventWith(TOUCH_START);
+			}
+			_isMoving = !disableMovement && numTouchPoints >= 1;
+			_isZooming = !disableZooming && numTouchPoints >= 2;
+			_isRotating = !disableRotation && numTouchPoints >= 2;
+		}
+		
+		protected function endTouch():void
+		{
+			if (_isTouching) 
+			{
+				_isTouching = _isMoving = _isZooming = _isRotating = false;
+				touchAID = touchBID = -1;
+				applyScaleBounds(true);
+				invalidateBounds();
+				dispatchEventWith(TOUCH_END);
+			}
+		}
+		
+		public function scaleTo(scale:Number, pivotX:Number, pivotY:Number, duration:Number = 0):void
+		{
+			if (_isTouching)
+			{
+				return;
+			}
+			
+			cancelScaleTween();
+			
+			this.x += (pivotX - this.pivotX) * this.scale;
+			this.y += (pivotY - this.pivotY) * this.scale;
+			this.pivotX = pivotX;
+			this.pivotY = pivotY;
+			
+			var finalScale:Number = MathUtil.clamp(scale, minimumScale, maximumScale);
+			if (this.scale != finalScale)
+			{
+				if (duration >= 0)
+				{
+					scaleTweenID = Starling.juggler.tween(this, duration, {
+						transition: Transitions.EASE_OUT,
+						scale: finalScale,
+						onUpdate: invalidateBounds
+					});
+				}
+				else
+				{
+					scale = finalScale;
+					invalidateBounds();
+				}
+			}
+		}
+		
+		protected function cancelScaleTween():void
+		{
+			if (scaleTweenID)
+			{
+				Starling.juggler.removeByID(scaleTweenID);
+				scaleTweenID = 0;
+			}
+		}
+		
+		protected function applyScaleBounds(animate:Boolean):void
+		{
+			cancelScaleTween();
+			scaleTo(scale, pivotX, pivotY, animate ? _elasticity * 0.4 : 0);
+		}
+		
+		protected function getMovementGravity():Point
+		{
+			var gravity:Point = new Point;
+			
+			if (movementBounds && viewPort) 
+			{
+				if (viewPort.width > movementBounds.width) 
+				{
+					gravity.x = ((viewPort.left - movementBounds.left) + (viewPort.width - movementBounds.width) / 2) * scale;
+				} 
+				else if (viewPort.left < movementBounds.left) 
+				{
+					gravity.x = (viewPort.left - movementBounds.left) * scale;
+				} 
+				else if (viewPort.right > movementBounds.right) 
+				{
+					gravity.x = (viewPort.right - movementBounds.right) * scale;
 				}
 				
-				if (viewPort.width > movementBounds.width) {
-					this.x += ((viewPort.left - movementBounds.left) + (viewPort.width - movementBounds.width) / 2) * scaleX;
-				} else if (viewPort.left < movementBounds.left) {
-					this.x += (viewPort.left - movementBounds.left) * scaleX;
-				} else if (viewPort.right > movementBounds.right) {
-					this.x += (viewPort.right - movementBounds.right) * scaleX;
+				if (viewPort.height > movementBounds.height) 
+				{
+					gravity.y = ((viewPort.top - movementBounds.top) + (viewPort.height - movementBounds.height) / 2) * scale;
+				} 
+				else if (viewPort.top < movementBounds.top) 
+				{
+					gravity.y = (viewPort.top - movementBounds.top) * scale;
+				} 
+				else if (viewPort.bottom > movementBounds.bottom) 
+				{
+					gravity.y = (viewPort.bottom - movementBounds.bottom) * scale;
+				}
+			}
+			
+			return gravity;
+		}
+		
+		public function invalidateBounds():void
+		{
+			boundsInvalid = true;
+		}
+		
+		public function validateNow():void
+		{
+			if (!boundsInvalid && !velocity.length)
+			{
+				return;
+			}
+			
+			dispatchEventWith(Event.CHANGE);
+			
+			if (!_isTouching) 
+			{
+				var prevX:Number = x;
+				var prevY:Number = y;
+				var gravity:Point = getMovementGravity();
+				
+				if (!_snapToBounds && (Math.abs(velocity.length) > MINIMUM_VELOCITY || Math.abs(gravity.length) > MINIMUM_VELOCITY))
+				{
+					velocity.x *= decelerationRatio * (gravity.x ? _elasticity : 1);
+					velocity.y *= decelerationRatio * (gravity.y ? _elasticity : 1);
+					x += velocity.x + gravity.x * (1 - _elasticity);
+					y += velocity.y + gravity.y * (1 - _elasticity);
+				}
+				else
+				{
+					velocity.setTo(0, 0);
+					x += gravity.x;
+					y += gravity.y;
 				}
 				
-				if (viewPort.height > movementBounds.height) {
-					this.y += ((viewPort.top - movementBounds.top) + (viewPort.height - movementBounds.height) / 2) * scaleY;
-				} else if (viewPort.top < movementBounds.top) {
-					this.y += (viewPort.top - movementBounds.top) * scaleY;
-				} else if (viewPort.bottom > movementBounds.bottom) {
-					this.y += (viewPort.bottom - movementBounds.bottom) * scaleY;
+				if (prevX == x && prevY == y)
+				{
+					boundsInvalid = false;
 				}
+				
+				_snapToBounds = false;
+			}
+			else
+			{
+				boundsInvalid = false;
 			}
 		}
 		
-		public override function dispose():void {
-			removeEventListener(TouchEvent.TOUCH, onTouch);
-			super.dispose();
+		public function killVelocity():void
+		{
+			velocity.setTo(0, 0);
 		}
 		
-		public function get movementBounds():Rectangle {
-			return _movementBounds;
+		public function snapToBounds():void
+		{
+			endTouch();
+			applyScaleBounds(false);
+			invalidateBounds();
+			_snapToBounds = true;
+			velocity.setTo(0, 0);
+			validateNow();
 		}
-		
-		public function set movementBounds(value:Rectangle):void {
-			_movementBounds = value;
-			applyBounds();
-		}
-		
-		public function get disableMovement():Boolean {
-			return _disableMovement;
-		}
-		
-		public function set disableMovement(value:Boolean):void {
-			_disableMovement = value;
-		}
-		
-		public function get disableRotation():Boolean {
-			return _disableRotation;
-		}
-		
-		public function set disableRotation(value:Boolean):void {
-			_disableRotation = value;
-		}
-		
-		public function get disableZooming():Boolean {
-			return _disableZooming;
-		}
-		
-		public function set disableZooming(value:Boolean):void {
-			_disableZooming = value;
-		}
-		
-		public function get minimumScale():Number {
-			return _minimumScale;
-		}
-		
-		public function set minimumScale(value:Number):void {
-			_minimumScale = value;
-		}
-		
-		public function get maximumScale():Number {
-			return _maximumScale;
-		}
-		
-		public function set maximumScale(value:Number):void {
-			_maximumScale = value;
-		}
-		
-		//*************************************************************//
-		//********************  Event Listeners  **********************//
-		//*************************************************************//
-		
-		private function onEnterFrame(e:EnterFrameEvent):void {
-			if (!touching) {
-				movement.x *= decelerationRatio;
-				movement.y *= decelerationRatio;
-				x += movement.x;
-				y += movement.y;
-				applyBounds();
-			}
-		}
-	
 	}
-
 }

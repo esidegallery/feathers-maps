@@ -1,7 +1,7 @@
 package cz.j4w.map.example {
 	import cz.j4w.map.MapLayerOptions;
 	import cz.j4w.map.MapOptions;
-	import cz.j4w.map.events.MapEvent;
+	import cz.j4w.map.events.MapEventType;
 	import cz.j4w.map.geo.GeoMap;
 	import cz.j4w.map.geo.GeoUtils;
 	import cz.j4w.map.geo.Maps;
@@ -58,10 +58,10 @@ package cz.j4w.map.example {
 				
 				geoMap.addMarkerLongLat("marker" + i, mapOptions.initialCenter.x + .1 - Math.random() * .2, mapOptions.initialCenter.y + .1 - Math.random() * .2, image);
 			}
-			geoMap.addEventListener(MapEvent.MARKER_TRIGGERED, onGeoMapMarkerTriggered);
+			geoMap.addEventListener(MapEventType.MARKER_TRIGGERED, onGeoMapMarkerTriggered);
 		}
 		
-		private function onGeoMapMarkerTriggered(e:MapEvent):void {
+		private function onGeoMapMarkerTriggered(e:MapEventType):void {
 			trace(e.target);
 		}
 	

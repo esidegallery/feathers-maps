@@ -1,69 +1,129 @@
-package cz.j4w.map {
-	import flash.display.LoaderInfo;
-	import flash.events.Event;
+package cz.j4w.map 
+{
 	import flash.geom.Point;
 	
 	import feathers.controls.ImageLoader;
 	
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
+	import starling.events.Event;
 	
 	/**
 	 * ...
 	 * @author Jakub Wagner, J4W
 	 */
-	public class MapTile extends ImageLoader {
+	public class MapTile extends ImageLoader 
+	{
+		protected static const INVALIDATION_FLAG_SOURCE:String = "source";
+
 		protected var buffer:MapTilesBuffer;
 		
-		public var sourceBackup:Object;
+		public var loadInstantly:Boolean;
+		public var prioritiseBuffering:Boolean;
+		public var delayedSource:Object;
+		public var animateShow:Boolean;
 		
 		public var mapX:int;
 		public var mapY:int;
 		public var zoom:int;
 		
-		public function MapTile(mapX:int, mapY:int, zoom:int, buffer:MapTilesBuffer) {
+		public function MapTile(mapX:int, mapY:int, zoom:int, buffer:MapTilesBuffer) 
+		{
 			super();
 			
-			this.buffer = buffer;
-			this.zoom = zoom;
-			this.mapY = mapY;
 			this.mapX = mapX;
+			this.mapY = mapY;
+			this.zoom = zoom;
+			this.buffer = buffer;
 		}
 		
-		override public function set source(value:Object):void {
-			if (!sourceBackup) {
-				buffer.currentlyBuffering.push(this);
-				sourceBackup = value;
+		override protected function initialize():void
+		{
+			super.initialize();
+			
+			addEventListener(Event.COMPLETE, function():void
+			{
+				if (_texture)
+				{
+					show();
+				}
+				else
+				{
+					visible = false;
+				}
+			});
+		}
+		
+		protected function show():void
+		{
+			visible = true;
+			if (animateShow && alpha < 1)
+			{
+				Starling.juggler.tween(this, 0.1, {alpha:1});
+			}
+			else
+			{
+				alpha = 1;
+			}
+		}
+		
+		override protected function layout():void
+		{
+			if (!this.image || !this._currentTexture)
+			{
 				return;
 			}
+			
+			this.image.x = 0;
+			this.image.y = 0;
+			this.image.width = this.actualWidth;
+			this.image.height = this.actualHeight;
+		}
+		
+		override public function set source(value:Object):void
+		{
+			if (value && source == value)
+			{
+				animateShow = !_texture
+				show();
+				return;
+			}
+			
+			if (loadInstantly)
+			{
+				super.source = value;
+				return;
+			}
+			
+			
+			var cacheKey:String = sourceToTextureCacheKey(value);
+			if (_textureCache && cacheKey && _textureCache.hasTexture(cacheKey))
+			{
+				animateShow = false;
+				super.source = value;
+				return;
+			}
+			
+			if (!delayedSource) 
+			{
+				delayedSource = value;
+				buffer.add(this, prioritiseBuffering);
+				return;
+			}
+			
+			animateShow = true;
 			super.source = value;
 		}
 		
-		public function get isDisposed():Boolean {
+		public function get isDisposed():Boolean 
+		{
 			return _isDisposed;
 		}
 		
-		override public function hitTest(localPoint:Point):DisplayObject {
-			// all tiles are always able to touch
+		override public function hitTest(localPoint:Point):DisplayObject
+		{
+			// All tiles are always able to touch:
 			return this;
 		}
-		
-		//*************************************************************//
-		//********************  Event Listeners  **********************//
-		//*************************************************************//
-		
-		override protected function loader_completeHandler(event:flash.events.Event):void {
-			var loaderInfo:LoaderInfo = event.target as LoaderInfo;
-			if (loaderInfo.bytesTotal == 1113) // empty tile
-				visible = false;
-			else {
-				super.loader_completeHandler(event);
-				visible = true;
-				alpha = 0;
-				Starling.juggler.tween(this, .1, {alpha:1});	
-			}
-		}
-	
 	}
-
 }
