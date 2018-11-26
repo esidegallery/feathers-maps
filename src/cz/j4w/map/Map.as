@@ -70,11 +70,33 @@ package cz.j4w.map
 		
 		public var textureCache:TextureCache;
 		
-		public var pendingReadyLayers:Vector.<MapLayer> = new Vector.<MapLayer>;
+		/** 
+		 * Defaults to <code>MapLayer</code>. The class contructor needs to have the following signature:<br>
+		 * <code>MapLayer(map:Map, id:String, options:MapLayerOptions, buffer:MapTilesBuffer)</code> 
+		 */
+		public var layerFactoryClass:Class = MapLayer;
 		
 		public function Map(mapOptions:MapOptions)
 		{
 			this.mapOptions = mapOptions;
+			
+			layers = new Dictionary;
+			circles = new Dictionary;
+			markers = new Dictionary;
+			
+			mapTilesBuffer = new MapTilesBuffer;
+			markerDisplays = new Vector.<DisplayObject>;
+			circleDisplays = new Vector.<DisplayObject>;
+			
+			mapContainer = new Sprite;
+			markersContainer = new Sprite;
+			circlesContainer = new Sprite;
+			mapContainer.addChild(circlesContainer);
+			mapContainer.addChild(markersContainer);
+			
+			_touchSheet = new TouchSheet(mapContainer, null, mapOptions);
+			_touchSheet.scale = mapOptions.initialScale || 1;
+			addChild(_touchSheet);
 		}
 		
 		override protected function initialize():void 
@@ -85,28 +107,10 @@ package cz.j4w.map
 			addChild(maskQuad);
 			mask = maskQuad;
 			
-			layers = new Dictionary;
-			circles = new Dictionary;
-			markers = new Dictionary;
-			
-			markerDisplays = new Vector.<DisplayObject>;
-			circleDisplays = new Vector.<DisplayObject>;
-			
-			mapTilesBuffer = new MapTilesBuffer;
-			
-			mapContainer = new Sprite;
-			markersContainer = new Sprite;
-			circlesContainer = new Sprite;
-			mapContainer.addChild(circlesContainer);
-			mapContainer.addChild(markersContainer);
-			
-			_touchSheet = new TouchSheet(mapContainer, null, mapOptions);
-			_touchSheet.scale = mapOptions.initialScale || 1;
 			_touchSheet.addEventListener(Event.CHANGE, function():void
 			{
 				update();
 			});
-			addChild(_touchSheet);
 			
 			addEventListener(TouchEvent.TOUCH, onTouch);
 			stage.starling.nativeStage.addEventListener(MouseEvent.MOUSE_WHEEL, onNativeStageMouseWheel);
@@ -183,49 +187,34 @@ package cz.j4w.map
 				
 				var childIndex:uint = options.index >= 0 ? options.index : mapContainer.numChildren;
 				
-				layer = new MapLayer(this, id, options, mapTilesBuffer);
+				layer = new layerFactoryClass(this, id, options, mapTilesBuffer) as MapLayer;
+				if (!layer)
+				{
+					throw new Error("layerFactoryClass is invalid");
+				}
 				layer.textureCache = textureCache;
 				
 				mapContainer.addChildAt(layer, childIndex); //add layer			
 				mapContainer.addChild(circlesContainer); //circles above layers
 				mapContainer.addChild(markersContainer); //markers above circles
-				
-				if (pendingReadyLayers)
-				{
-					layer.addEventListener(Event.READY, layer_readyHandler);
-				}
-				
+			
 				layers[id] = layer;
 				invalidate(INVALIDATION_FLAG_LAYOUT);
 			}
 			
 			return layer;
 		}
-		
-		protected function layer_readyHandler(event:Event):void
+
+		public function removeLayer(id:String):MapLayer
 		{
-			removePendingLayer(event.currentTarget as MapLayer);
-		}
-		
-		public function removeLayer(id:String):void
-		{
-			if (layers[id]) 
+			var layer:MapLayer = layers[id] as MapLayer;
+			if (layer) 
 			{
-				removePendingLayer(layers[id]);
-				layers[id].removeFromParent(true);
+				layer.removeFromParent(true);
 				delete layers[id];
 				invalidate(INVALIDATION_FLAG_LAYOUT);
 			}
-		}
-		
-		protected function removePendingLayer(layer:MapLayer):void
-		{
-			layer.removeEventListener(Event.READY, layer_readyHandler);
-			if (pendingReadyLayers)
-			{
-				var index:int = pendingReadyLayers.indexOf(layer);
-				index >= 0 && pendingReadyLayers.removeAt(index);
-			}
+			return layer;
 		}
 		
 		public function removeAllLayers():void 
@@ -427,23 +416,6 @@ package cz.j4w.map
 			return d1.x > d2.x ? 1 : -1;
 		}
 		
-		protected function checkIsReady():void
-		{
-			if (pendingReadyLayers && !pendingReadyLayers.length)
-			{
-				pendingReadyLayers = null;
-				dispatchEventWith(Event.READY);
-			}
-		}
-		
-		override public function dispose():void
-		{
-			mapTilesBuffer.dispose();
-			Starling.current.nativeStage.removeEventListener(MouseEvent.MOUSE_WHEEL, onNativeStageMouseWheel);
-			
-			super.dispose();
-		}
-		
 		public function tweenTo(x:Number, y:Number, scale:Number = 1, time:Number = 3):uint 
 		{
 			cancelTween();
@@ -487,6 +459,14 @@ package cz.j4w.map
 		{
 			Starling.juggler.removeByID(currentTween);
 			currentTween = 0;
+		}
+		
+		override public function dispose():void
+		{
+			mapTilesBuffer.dispose();
+			Starling.current.nativeStage.removeEventListener(MouseEvent.MOUSE_WHEEL, onNativeStageMouseWheel);
+			
+			super.dispose();
 		}
 		
 		//*************************************************************//

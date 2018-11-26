@@ -1,11 +1,8 @@
 package cz.j4w.map 
 {
-	import flash.geom.Point;
-	
 	import feathers.controls.ImageLoader;
 	
 	import starling.core.Starling;
-	import starling.display.DisplayObject;
 	import starling.events.Event;
 	
 	/**
@@ -41,17 +38,7 @@ package cz.j4w.map
 		{
 			super.initialize();
 			
-			addEventListener(Event.COMPLETE, function():void
-			{
-				if (_texture)
-				{
-					show();
-				}
-				else
-				{
-					visible = false;
-				}
-			});
+			addEventListener(Event.COMPLETE, show);
 		}
 		
 		protected function show():void
@@ -59,12 +46,21 @@ package cz.j4w.map
 			visible = true;
 			if (animateShow && alpha < 1)
 			{
-				Starling.juggler.tween(this, 0.1, {alpha:1});
+				Starling.juggler.tween(this, 0.1, {
+					alpha: 1,
+					onComplete: dispatchReady
+				});
 			}
 			else
 			{
 				alpha = 1;
+				dispatchReady();
 			}
+		}
+		
+		protected function dispatchReady():void
+		{
+			dispatchEventWith(Event.READY);
 		}
 		
 		override protected function layout():void
@@ -118,12 +114,6 @@ package cz.j4w.map
 		public function get isDisposed():Boolean 
 		{
 			return _isDisposed;
-		}
-		
-		override public function hitTest(localPoint:Point):DisplayObject
-		{
-			// All tiles are always able to touch:
-			return this;
 		}
 	}
 }

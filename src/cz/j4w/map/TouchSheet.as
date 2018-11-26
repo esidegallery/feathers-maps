@@ -23,6 +23,9 @@ package cz.j4w.map
 	{
 		public static const TOUCH_START:String = "touchStart";
 		public static const TOUCH_END:String = "touchEnd";
+		public static const MOVE:String = "move";
+		public static const ZOOM:String = "zoom";
+		public static const ROTATE:String = "rotate";
 		
 		protected static const MINIMUM_VELOCITY:Number = 0.1;
 		
@@ -138,31 +141,18 @@ package cz.j4w.map
 			}
 		}
 		
-		protected var _isMoving:Boolean;
-		public function get isMoving():Boolean
-		{
-			return _isMoving;
-		}
-		
-		protected var _isZooming:Boolean;
-		public function get isZooming():Boolean
-		{
-			return _isZooming;
-		}
-		
-		protected var _isRotating:Boolean;
-		public function get isRotating():Boolean
-		{
-			return _isRotating;
-		}
-		
 		private var touchAID:int = -1;
 		private var touchBID:int = -1;
 		
 		private var boundsInvalid:Boolean
 		private var _snapToBounds:Boolean;
 		private var scale2:Number;
-		private var velocity:Point = new Point;
+		private var _velocity:Point = new Point;
+		public function get velocity():Point
+		{
+			return _velocity.clone();
+		}
+
 		private var scaleTweenID:uint;
 		
 		/**
@@ -244,16 +234,6 @@ package cz.j4w.map
 				}
 			}
 			
-			if (prevAID != touchAID)
-			{
-				trace("A =", touchAID);
-			}
-			if (prevBID != touchBID)
-			{
-				trace("B =", touchBID);
-			}
-			
-			
 			// do a multi-touch gesture if we have enough touches
 			if (touchAID != -1 && touchBID != -1 && (!disableRotation || !disableZooming || !disableMovement))
 			{
@@ -308,6 +288,7 @@ package cz.j4w.map
 				if (!disableRotation && deltaAngle !== 0)
 				{
 					rotation += deltaAngle;
+					dispatchEventWith(ROTATE);
 				}
 				
 				var sizeDiff:Number = currentVector.length / previousVector.length;
@@ -326,6 +307,7 @@ package cz.j4w.map
 					{
 						scale = scale2;
 					}
+					dispatchEventWith(ZOOM);
 				}
 			}
 			else if (touchAID != -1) //single touch gesture
@@ -342,6 +324,8 @@ package cz.j4w.map
 					{
 						x += delta.x;
 						y += delta.y;
+						
+						dispatchEventWith(MOVE);
 					}
 					Pool.putPoint(delta);
 				}
@@ -353,7 +337,7 @@ package cz.j4w.map
 			
 			if (_isTouching)
 			{
-				velocity.setTo((x - pivotX) - (prevX - prevPivotX), (y - pivotY) - (prevY - prevPivotY));
+				_velocity.setTo((x - pivotX) - (prevX - prevPivotX), (y - pivotY) - (prevY - prevPivotY));
 				invalidateBounds();
 			}
 		}
@@ -367,16 +351,13 @@ package cz.j4w.map
 				scale2 = scale;
 				dispatchEventWith(TOUCH_START);
 			}
-			_isMoving = !disableMovement && numTouchPoints >= 1;
-			_isZooming = !disableZooming && numTouchPoints >= 2;
-			_isRotating = !disableRotation && numTouchPoints >= 2;
 		}
 		
 		protected function endTouch():void
 		{
 			if (_isTouching) 
 			{
-				_isTouching = _isMoving = _isZooming = _isRotating = false;
+				_isTouching = false;
 				touchAID = touchBID = -1;
 				applyScaleBounds(true);
 				invalidateBounds();
@@ -384,7 +365,7 @@ package cz.j4w.map
 			}
 		}
 		
-		public function scaleTo(scale:Number, pivotX:Number, pivotY:Number, duration:Number = 0):void
+		public function scaleTo(scale:Number, pivotX:Number = NaN, pivotY:Number = NaN, duration:Number = 0):void
 		{
 			if (_isTouching)
 			{
@@ -395,13 +376,19 @@ package cz.j4w.map
 			
 			this.x += (pivotX - this.pivotX) * this.scale;
 			this.y += (pivotY - this.pivotY) * this.scale;
-			this.pivotX = pivotX;
-			this.pivotY = pivotY;
+			if (!isNaN(pivotX))
+			{
+				this.pivotX = pivotX;
+			}
+			if (!isNaN(pivotY))
+			{
+				this.pivotY = pivotY;
+			}
 			
 			var finalScale:Number = MathUtil.clamp(scale, minimumScale, maximumScale);
 			if (this.scale != finalScale)
 			{
-				if (duration >= 0)
+				if (duration > 0)
 				{
 					scaleTweenID = Starling.juggler.tween(this, duration, {
 						transition: Transitions.EASE_OUT,
@@ -411,7 +398,7 @@ package cz.j4w.map
 				}
 				else
 				{
-					scale = finalScale;
+					this.scale = finalScale;
 					invalidateBounds();
 				}
 			}
@@ -475,7 +462,7 @@ package cz.j4w.map
 		
 		public function validateNow():void
 		{
-			if (!boundsInvalid && !velocity.length)
+			if (!boundsInvalid && !_velocity.length)
 			{
 				return;
 			}
@@ -488,16 +475,16 @@ package cz.j4w.map
 				var prevY:Number = y;
 				var gravity:Point = getMovementGravity();
 				
-				if (!_snapToBounds && (Math.abs(velocity.length) > MINIMUM_VELOCITY || Math.abs(gravity.length) > MINIMUM_VELOCITY))
+				if (!_snapToBounds && (Math.abs(_velocity.length) > MINIMUM_VELOCITY || Math.abs(gravity.length) > MINIMUM_VELOCITY))
 				{
-					velocity.x *= decelerationRatio * (gravity.x ? _elasticity : 1);
-					velocity.y *= decelerationRatio * (gravity.y ? _elasticity : 1);
-					x += velocity.x + gravity.x * (1 - _elasticity);
-					y += velocity.y + gravity.y * (1 - _elasticity);
+					_velocity.x *= decelerationRatio * (gravity.x ? _elasticity : 1);
+					_velocity.y *= decelerationRatio * (gravity.y ? _elasticity : 1);
+					x += _velocity.x + gravity.x * (1 - _elasticity);
+					y += _velocity.y + gravity.y * (1 - _elasticity);
 				}
 				else
 				{
-					velocity.setTo(0, 0);
+					_velocity.setTo(0, 0);
 					x += gravity.x;
 					y += gravity.y;
 				}
@@ -517,7 +504,7 @@ package cz.j4w.map
 		
 		public function killVelocity():void
 		{
-			velocity.setTo(0, 0);
+			_velocity.setTo(0, 0);
 		}
 		
 		public function snapToBounds():void
@@ -526,7 +513,7 @@ package cz.j4w.map
 			applyScaleBounds(false);
 			invalidateBounds();
 			_snapToBounds = true;
-			velocity.setTo(0, 0);
+			_velocity.setTo(0, 0);
 			validateNow();
 		}
 	}

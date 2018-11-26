@@ -3,12 +3,10 @@ package cz.j4w.map
 	import flash.geom.Rectangle;
 	import flash.utils.Dictionary;
 	
-	import feathers.controls.ImageLoader;
 	import feathers.utils.textures.TextureCache;
 	
 	import starling.display.BlendMode;
 	import starling.display.Sprite;
-	import starling.events.Event;
 	
 	/**
 	 * ...
@@ -40,14 +38,13 @@ package cz.j4w.map
 		
 		public var debugTrace:Boolean = false;
 		
-		protected var pendingReadyTiles:Vector.<ImageLoader> = new Vector.<ImageLoader>;
-		
 		public function MapLayer(map:Map, id:String, options:MapLayerOptions, buffer:MapTilesBuffer)
 		{
 			super();
-			this._options = options;
-			this.id = id;
+			
 			this.map = map;
+			this.id = id;
+			_options = options;
 			mapTilesBuffer = buffer;
 			
 			urlTemplate = _options.urlTemplate;
@@ -115,7 +112,7 @@ package cz.j4w.map
 			}
 		}
 		
-		protected function createTile(x:int, y:int, actualTileSize:Number, zoom:int, scale:int):Boolean 
+		protected function createTile(x:int, y:int, actualTileSize:Number, zoom:int, scale:int):MapTile 
 		{
 			var key:String = getKey(x, y, zoom);
 			
@@ -123,70 +120,35 @@ package cz.j4w.map
 			if (tile)
 			{
 				addChild(tile);
-				return false;
 			}
-			
-			var url:String = urlTemplate.replace("${z}", maximumZoom - zoom).replace("${x}", x).replace("${y}", y);
-			tile = mapTilesBuffer.create(x, y, zoom);
-			addChild(tile);
-
-			tile.loadInstantly ||= (_options.loadInitialTilesInstantly && firstLoad);
-			tile.prioritiseBuffering = options.prioritiseTileLoading;
-			if (pendingReadyTiles) 
+			else
 			{
-				pendingReadyTiles.push(tile);
-				tile.addEventListener(Event.COMPLETE, tile_readyHandler);
-				tile.addEventListener(Event.IO_ERROR, tile_readyHandler);
-				tile.addEventListener(Event.SECURITY_ERROR, tile_readyHandler);
+				var url:String = urlTemplate.replace("${z}", maximumZoom - zoom).replace("${x}", x).replace("${y}", y);
+				tile = mapTilesBuffer.create(x, y, zoom);
+				addChild(tile);
+				
+				tile.loadInstantly ||= (_options.loadInitialTilesInstantly && firstLoad);
+				tile.prioritiseBuffering = options.prioritiseTileLoading;
+				tile.textureCache = textureCache;
+				tile.source = url;
+				tile.setSize(tileSize, tileSize);
+				tile.x = x * actualTileSize;
+				tile.y = y * actualTileSize;
+				tile.scaleX = tile.scaleY = scale;
+				
+				tilesDictionary[key] = tile;
 			}
-			tile.textureCache = textureCache;
-			tile.source = url;
-			tile.setSize(tileSize, tileSize);
-			tile.x = x * actualTileSize;
-			tile.y = y * actualTileSize;
-			tile.scaleX = tile.scaleY = scale;
-			
-			tilesDictionary[key] = tile;
-			
-			return true;
+			return tile;
 		}
 		
-		protected function tile_readyHandler(event:Event):void
-		{
-			removeTileFromPending(event.currentTarget as MapTile);
-		}
-		
-		protected function removeTileFromPending(tile:MapTile):void
-		{
-			tile.removeEventListener(Event.COMPLETE, tile_readyHandler);
-			tile.removeEventListener(Event.IO_ERROR, tile_readyHandler);
-			tile.removeEventListener(Event.SECURITY_ERROR, tile_readyHandler);
-			if (pendingReadyTiles)
-			{
-				var index:int = pendingReadyTiles.indexOf(tile);
-				index >= 0 && pendingReadyTiles.removeAt(index);
-			}
-		}
-		
-		protected function removeTile(tile:MapTile):void 
+		protected function removeTile(tile:MapTile):MapTile 
 		{
 			mapTilesBuffer.release(tile);
 			tile.removeFromParent();
-			
-			removeTileFromPending(tile);
-			
 			var key:String = getKey(tile.mapX, tile.mapY, tile.zoom);
 			tilesDictionary[key] = null;
 			delete tilesDictionary[key];
-		}
-		
-		protected function checkIsReady():void
-		{
-			if (pendingReadyTiles && !pendingReadyTiles.length)
-			{
-				dispatchEventWith(Event.READY);
-				pendingReadyTiles = null;
-			}
+			return tile;
 		}
 		
 		protected function getKey(x:int, y:int, zoom:int):String 
@@ -211,7 +173,6 @@ package cz.j4w.map
 			
 			checkTiles(mapViewport, zoom, scale);
 			checkNotUsedTiles(mapViewport, zoom);
-			checkIsReady();
 			firstLoad = false;
 		}
 	}
