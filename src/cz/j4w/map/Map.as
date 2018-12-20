@@ -495,7 +495,7 @@ package cz.j4w.map
 		
 		private function onNativeStageMouseWheel(event:MouseEvent):void 
 		{
-			if (isEnabled)
+			if (isCreated && isEnabled && _touchSheet)
 			{
 				var loc:Point = Pool.getPoint(event.stageX, event.stageY);
 				_touchSheet.globalToLocal(loc, loc);
