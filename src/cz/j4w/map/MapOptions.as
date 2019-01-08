@@ -17,6 +17,5 @@ package cz.j4w.map
 		public var minimumScale:Number = 1 / Math.pow(2, 17);
 		public var initialCenter:Point;
 		public var movementBounds:Rectangle;
-		public var tileCreationMargin:int;
 	}
 }

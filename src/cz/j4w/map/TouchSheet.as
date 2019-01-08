@@ -347,6 +347,7 @@ package cz.j4w.map
 			cancelScaleTween();
 			if (!_isTouching)
 			{
+				trace(scale);
 				_isTouching = true;
 				scale2 = scale;
 				dispatchEventWith(TOUCH_START);
@@ -365,7 +366,7 @@ package cz.j4w.map
 			}
 		}
 		
-		public function scaleTo(scale:Number, pivotX:Number = NaN, pivotY:Number = NaN, duration:Number = 0):void
+		public function scaleTo(newScale:Number, pivotX:Number = NaN, pivotY:Number = NaN, duration:Number = 0):void
 		{
 			if (_isTouching)
 			{
@@ -374,8 +375,8 @@ package cz.j4w.map
 			
 			cancelScaleTween();
 			
-			this.x += (pivotX - this.pivotX) * this.scale;
-			this.y += (pivotY - this.pivotY) * this.scale;
+			this.x += (pivotX - this.pivotX) * scale;
+			this.y += (pivotY - this.pivotY) * scale;
 			if (!isNaN(pivotX))
 			{
 				this.pivotX = pivotX;
@@ -385,8 +386,8 @@ package cz.j4w.map
 				this.pivotY = pivotY;
 			}
 			
-			var finalScale:Number = MathUtil.clamp(scale, minimumScale, maximumScale);
-			if (this.scale != finalScale)
+			var finalScale:Number = MathUtil.clamp(newScale, minimumScale, maximumScale);
+			if (scale != finalScale)
 			{
 				if (duration > 0)
 				{
@@ -398,7 +399,7 @@ package cz.j4w.map
 				}
 				else
 				{
-					this.scale = finalScale;
+					scale = finalScale;
 					invalidateBounds();
 				}
 			}
@@ -489,7 +490,7 @@ package cz.j4w.map
 					y += gravity.y;
 				}
 				
-				if (prevX == x && prevY == y)
+				if (prevX.toFixed(2) == x.toFixed(2) && prevY.toFixed(2) == y.toFixed(2)) // Full precision may result in a flip-flop effect.
 				{
 					boundsInvalid = false;
 				}
