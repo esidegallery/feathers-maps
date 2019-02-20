@@ -347,7 +347,6 @@ package cz.j4w.map
 			cancelScaleTween();
 			if (!_isTouching)
 			{
-				trace(scale);
 				_isTouching = true;
 				scale2 = scale;
 				dispatchEventWith(TOUCH_START);
@@ -366,7 +365,7 @@ package cz.j4w.map
 			}
 		}
 		
-		public function scaleTo(newScale:Number, pivotX:Number = NaN, pivotY:Number = NaN, duration:Number = 0):void
+		public function scaleTo(newScale:Number, pivotX:Number = 0, pivotY:Number = 0, duration:Number = 0):void
 		{
 			if (_isTouching)
 			{
