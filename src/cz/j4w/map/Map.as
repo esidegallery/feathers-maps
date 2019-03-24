@@ -194,9 +194,9 @@ package cz.j4w.map
 				}
 				layer.textureCache = textureCache;
 				
-				mapContainer.addChildAt(layer, childIndex); //add layer			
-				mapContainer.addChild(circlesContainer); //circles above layers
-				mapContainer.addChild(markersContainer); //markers above circles
+				mapContainer.addChildAt(layer, childIndex);			
+				mapContainer.addChild(circlesContainer); // Circles above layers.
+				mapContainer.addChild(markersContainer); // Markers above circles.
 			
 				layers[id] = layer;
 				invalidate(INVALIDATION_FLAG_LAYOUT);

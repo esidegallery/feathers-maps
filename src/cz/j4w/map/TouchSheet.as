@@ -28,12 +28,14 @@ package cz.j4w.map
 		public static const ROTATE:String = "rotate";
 		
 		protected static const MINIMUM_VELOCITY:Number = 0.1;
+		// Using this for now, but a more curved approach would be better.
+		protected static const ELASTICITY_EXPONENT:int = 6;
 		
 		public var disableMovement:Boolean;
 		public var disableRotation:Boolean;
 		public var disableZooming:Boolean;
 		
-		private var _minimumScale:Number;
+		private var _minimumScale:Number = 0;
 		public function get minimumScale():Number
 		{
 			return _minimumScale;
@@ -48,7 +50,7 @@ package cz.j4w.map
 			}
 		}
 		
-		private var _maximumScale:Number;
+		private var _maximumScale:Number = Number.MAX_VALUE;
 		public function get maximumScale():Number
 		{
 			return _maximumScale;
@@ -146,7 +148,9 @@ package cz.j4w.map
 		
 		private var boundsInvalid:Boolean
 		private var _snapToBounds:Boolean;
-		private var scale2:Number;
+		private var shadowX:Number;
+		private var shadowY:Number;
+		private var shadowScale:Number;
 		private var _velocity:Point = new Point;
 		public function get velocity():Point
 		{
@@ -276,14 +280,19 @@ package cz.j4w.map
 					(currentPosA.y + currentPosB.y) * 0.5
 				);
 				parent.globalToLocal(point, point);
-				x = point.x;
-				y = point.y;
 				
-				Pool.putPoint(point);
+				shadowX = point.x;
+				shadowY = point.y;
+				x = shadowX;
+				y = shadowY;
+				
+				
 				Pool.putPoint(currentPosA);
 				Pool.putPoint(previousPosA);
 				Pool.putPoint(currentPosB);
 				Pool.putPoint(previousPosB);
+				Pool.putPoint(point);
+				Pool.putPoint(gravity);
 				
 				if (!disableRotation && deltaAngle !== 0)
 				{
@@ -294,21 +303,34 @@ package cz.j4w.map
 				var sizeDiff:Number = currentVector.length / previousVector.length;
 				if (!disableZooming && sizeDiff !== 1)
 				{
-					scale2 *= sizeDiff;
-					if (scale2 < minimumScale) 
+					shadowScale *= sizeDiff;
+					if (shadowScale < minimumScale) 
 					{
-						scale = scale2 + (minimumScale - scale2) * _elasticity;
+						scale = shadowScale + (minimumScale - shadowScale) * (1 - Math.pow(_elasticity, ELASTICITY_EXPONENT));
 					}
-					else if (scale2 > maximumScale)
+					else if (shadowScale > maximumScale)
 					{
-						scale = scale2 - (scale2 - maximumScale) * _elasticity;
+						scale = shadowScale - (shadowScale - maximumScale) * (1 - Math.pow(_elasticity, ELASTICITY_EXPONENT));
 					}
 					else
 					{
-						scale = scale2;
+						scale = shadowScale;
 					}
 					dispatchEventWith(ZOOM);
 				}
+				
+				// After everything, apply movement gravity:
+				// Currently only works for elasticity = 0:
+				// Perhaps shadowX & Y could be applied before grabbing the touch location values?
+				if (elasticity == 0)
+				{
+					dispatchEventWith(Event.CHANGE);
+					var gravity:Point = getMovementGravity(Pool.getPoint());
+					x += gravity.x;
+					y += gravity.y;
+				}
+				
+				dispatchEventWith(MOVE);
 			}
 			else if (touchAID != -1) //single touch gesture
 			{
@@ -322,8 +344,17 @@ package cz.j4w.map
 					var delta:Point = touchA.getMovement(stage, Pool.getPoint());
 					if(delta.length !== 0)
 					{
-						x += delta.x;
-						y += delta.y;
+						shadowX += delta.x;
+						shadowY += delta.y;
+						x = shadowX;
+						y = shadowY;
+						
+						dispatchEventWith(Event.CHANGE);
+						gravity = getMovementGravity(Pool.getPoint());
+						// Pull back according to gravity:
+						x += gravity.x * (1 - Math.pow(_elasticity, ELASTICITY_EXPONENT));
+						y += gravity.y * (1 - Math.pow(_elasticity, ELASTICITY_EXPONENT));
+						Pool.putPoint(gravity);
 						
 						dispatchEventWith(MOVE);
 					}
@@ -348,7 +379,9 @@ package cz.j4w.map
 			if (!_isTouching)
 			{
 				_isTouching = true;
-				scale2 = scale;
+				shadowX = x;
+				shadowY = y;
+				shadowScale = scale;
 				dispatchEventWith(TOUCH_START);
 			}
 		}
@@ -393,13 +426,18 @@ package cz.j4w.map
 					scaleTweenID = Starling.juggler.tween(this, duration, {
 						transition: Transitions.EASE_OUT,
 						scale: finalScale,
-						onUpdate: invalidateBounds
+						onUpdate: function():void
+						{
+							invalidateBounds();
+							validateNow();
+						}
 					});
 				}
 				else
 				{
 					scale = finalScale;
 					invalidateBounds();
+					validateNow();
 				}
 			}
 		}
@@ -419,9 +457,9 @@ package cz.j4w.map
 			scaleTo(scale, pivotX, pivotY, animate ? _elasticity * 0.4 : 0);
 		}
 		
-		protected function getMovementGravity():Point
+		protected function getMovementGravity(outPoint:Point = null):Point
 		{
-			var gravity:Point = new Point;
+			var gravity:Point = outPoint || new Point;
 			
 			if (movementBounds && viewPort) 
 			{
@@ -467,20 +505,29 @@ package cz.j4w.map
 				return;
 			}
 			
-			dispatchEventWith(Event.CHANGE);
 			
 			if (!_isTouching) 
 			{
 				var prevX:Number = x;
 				var prevY:Number = y;
-				var gravity:Point = getMovementGravity();
+				
+				// Move according to velocity:
+				x += velocity.x;
+				y += velocity.y;
+				
+				dispatchEventWith(Event.CHANGE);
+				
+				// Get the gravity having moved:
+				var gravity:Point = getMovementGravity(Pool.getPoint());
 				
 				if (!_snapToBounds && (Math.abs(_velocity.length) > MINIMUM_VELOCITY || Math.abs(gravity.length) > MINIMUM_VELOCITY))
 				{
+					// Pull back according to gravity:
+					x += gravity.x * (1 - _elasticity);
+					y += gravity.y * (1 - _elasticity);
+					// Adjust velocity for the next frame:
 					_velocity.x *= decelerationRatio * (gravity.x ? _elasticity : 1);
 					_velocity.y *= decelerationRatio * (gravity.y ? _elasticity : 1);
-					x += _velocity.x + gravity.x * (1 - _elasticity);
-					y += _velocity.y + gravity.y * (1 - _elasticity);
 				}
 				else
 				{
@@ -488,6 +535,8 @@ package cz.j4w.map
 					x += gravity.x;
 					y += gravity.y;
 				}
+				
+				Pool.putPoint(gravity);
 				
 				if (prevX.toFixed(2) == x.toFixed(2) && prevY.toFixed(2) == y.toFixed(2)) // Full precision may result in a flip-flop effect.
 				{
@@ -498,6 +547,7 @@ package cz.j4w.map
 			}
 			else
 			{
+				dispatchEventWith(Event.CHANGE);
 				boundsInvalid = false;
 			}
 		}
