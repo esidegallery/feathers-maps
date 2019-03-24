@@ -290,6 +290,17 @@ package cz.j4w.map
 			return markers[id] as MapMarker;
 		}
 		
+		public function getAllMarkers():Vector.<MapMarker>
+		{
+			var markers:Vector.<MapMarker> = new Vector.<MapMarker>;
+			for (var key:Object in markers)
+			{
+				var marker:MapMarker = markers[key] as MapMarker;
+				marker && markers.push(marker);
+			}
+			return markers;
+		}
+		
 		public function getCircle(id:String):MapCircleOverlay 
 		{
 			return circles[id] as MapCircleOverlay;
