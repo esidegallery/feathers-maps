@@ -411,7 +411,7 @@ package cz.j4w.map
 		
 		public function tweenTo(centerX:Number, centerY:Number, scale:Number, duration:Number = 1, transition:String = "easeInOut"):void
 		{
-			_touchSheet &_touchSheet.tweenTo(centerX, centerY, scale, transition);
+			_touchSheet && _touchSheet.tweenTo(centerX, centerY, scale, duration, transition);
 		}
 		
 		override public function dispose():void
