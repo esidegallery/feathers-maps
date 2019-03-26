@@ -11,7 +11,6 @@ package cz.j4w.map
 	import feathers.utils.math.clamp;
 	import feathers.utils.textures.TextureCache;
 	
-	import starling.animation.Transitions;
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
 	import starling.display.Quad;
@@ -30,8 +29,6 @@ package cz.j4w.map
 		public static const MIN_ZOOM:int = 1;
 		public static const MAX_ZOOM:int = 20;
 		
-		protected var tweenTransition:Function = Transitions.getTransition(Transitions.EASE_IN_OUT);
-		protected var currentTween:uint;
 		protected var mapTilesBuffer:MapTilesBuffer;
 		
 		protected var mapOptions:MapOptions;
@@ -124,7 +121,7 @@ package cz.j4w.map
 			{
 				if (mapOptions.initialCenter)
 				{
-					setCenter(mapOptions.initialCenter);
+					_touchSheet.setCenter(mapOptions.initialCenter);
 				}
 			}
 			
@@ -269,22 +266,6 @@ package cz.j4w.map
 			return mapMarker;
 		}
 		
-		public function addCircleOverlay(id:String, x:Number, y:Number, displayObject:DisplayObject, data:Object = null):MapCircleOverlay
-		{
-			displayObject.name = id;
-			displayObject.x = x;
-			displayObject.y = y;
-			
-			circleDisplays.push(displayObject);
-			circlesContainer.addChild(displayObject);
-			
-			var mapCircle:MapCircleOverlay = new MapCircleOverlay(id, displayObject, data);
-			circles[id] = mapCircle;
-			invalidate(INVALIDATION_FLAG_LAYOUT);
-			
-			return mapCircle;
-		}
-		
 		public function getMarker(id:String):MapMarker
 		{
 			return markers[id] as MapMarker;
@@ -299,26 +280,6 @@ package cz.j4w.map
 				marker && markers.push(marker);
 			}
 			return markers;
-		}
-		
-		public function getCircle(id:String):MapCircleOverlay 
-		{
-			return circles[id] as MapCircleOverlay;
-		}
-		
-		public function removeCircleOverlay(id:String, dispose:Boolean = false):MapCircleOverlay 
-		{
-			var mapCircle:MapCircleOverlay = getCircle(id);
-			
-			if (mapCircle) 
-			{
-				var displayObject:DisplayObject = mapCircle.displayObject;
-				displayObject && displayObject.removeFromParent(dispose);
-				delete circles[id];
-				invalidate(INVALIDATION_FLAG_LAYOUT);
-			}
-			
-			return mapCircle;
 		}
 		
 		public function removeMarker(id:String, dispose:Boolean = false):MapMarker 
@@ -344,7 +305,43 @@ package cz.j4w.map
 			invalidate(INVALIDATION_FLAG_LAYOUT);
 		}
 		
-		public function removeAllCircles(dispose:Boolean = false):void
+		public function addCircleOverlay(id:String, x:Number, y:Number, displayObject:DisplayObject, data:Object = null):MapCircleOverlay
+		{
+			displayObject.name = id;
+			displayObject.x = x;
+			displayObject.y = y;
+			
+			circleDisplays.push(displayObject);
+			circlesContainer.addChild(displayObject);
+			
+			var mapCircle:MapCircleOverlay = new MapCircleOverlay(id, displayObject, data);
+			circles[id] = mapCircle;
+			invalidate(INVALIDATION_FLAG_LAYOUT);
+			
+			return mapCircle;
+		}
+		
+		public function getCircleOverlay(id:String):MapCircleOverlay 
+		{
+			return circles[id] as MapCircleOverlay;
+		}
+		
+		public function removeCircleOverlay(id:String, dispose:Boolean = false):MapCircleOverlay 
+		{
+			var mapCircle:MapCircleOverlay = getCircleOverlay(id);
+			
+			if (mapCircle) 
+			{
+				var displayObject:DisplayObject = mapCircle.displayObject;
+				displayObject && displayObject.removeFromParent(dispose);
+				delete circles[id];
+				invalidate(INVALIDATION_FLAG_LAYOUT);
+			}
+			
+			return mapCircle;
+		}
+		
+		public function removeAllCircleOverlays(dispose:Boolean = false):void
 		{
 			circlesContainer.removeChildren(0, -1, dispose);
 			circles = new Dictionary();
@@ -370,106 +367,51 @@ package cz.j4w.map
 			}
 		}
 		
-		public function setCenter(point:Point):void
+		private function sortMarkersFunction(d1:DisplayObject, d2:DisplayObject):int 
 		{
-			setCenterXY(point.x, point.y);
-		}
-		
-		public function setCenterXY(x:Number, y:Number):void 
-		{
-			_touchSheet.pivotX = x;
-			_touchSheet.pivotY = y;
-			_touchSheet.x = width / 2;
-			_touchSheet.y = height / 2;
-		}
-		
-		public function getCenter():Point 
-		{
-			return new Point(_touchSheet.viewPort.x + _touchSheet.viewPort.width / 2, _touchSheet.viewPort.y + _touchSheet.viewPort.height / 2);
-		}
-		
-		public function zoomIn(center:Point = null):void
-		{
-			zoomInOut(true, center);
-		}
-		
-		public function zoomOut(center:Point = null):void
-		{
-			zoomInOut(false, center);
-		}
-		
-		protected function zoomInOut($in:Boolean = true, center:Point = null):void
-		{
-			var newScale:Number = _touchSheet.scale / ($in ? 0.5 : 2);
-			center ||= getCenter();
-			touchSheet.scaleTo(newScale, center.x, center.y, 0.3);
+			return d1.x > d2.x ? 1 : -1;
 		}
 		
 		/** Converts the input zoom level to the equivalent scale value. */
-		protected function zoomToScale(level:int):Number
+		protected function getScale(zoomLevel:int):Number
 		{
 			var numScale:Number = 1;
-			for (var i:int = 0, l:int = clamp(level, MIN_ZOOM, MAX_ZOOM - 1); i < l; i++)
+			for (var i:int = 0, l:int = clamp(zoomLevel, MIN_ZOOM, MAX_ZOOM - 1); i < l; i++)
 			{
 				numScale *= 0.5;
 			}
 			return numScale;
 		}
 		
-		public function setZoom(level:int, time:Number = 0.3):void
+		public function getCenter():Point 
+		{
+			return _touchSheet ? _touchSheet.getViewCenter() : new Point;
+		}
+		
+		public function zoomIn(center:Point = null):void
+		{
+			_touchSheet && _touchSheet.zoomIn(center);
+		}
+		
+		public function zoomOut(center:Point = null):void
+		{
+			_touchSheet && _touchSheet.zoomOut(center);
+		}
+			
+		public function zoomTo(level:int, time:Number = 0.3):void
 		{
 			var center:Point = getCenter();
-			touchSheet.scaleTo(zoomToScale(level), center.x, center.y, time);
+			_touchSheet && _touchSheet.scaleTo(getScale(level), center.x, center.y, time);
 		}
 		
-		private function sortMarkersFunction(d1:DisplayObject, d2:DisplayObject):int 
+		public function setCenterXY(centerX:Number, centerY:Number):void
 		{
-			return d1.x > d2.x ? 1 : -1;
+			_touchSheet && _touchSheet.setCenterXY(centerX, centerY);
 		}
 		
-		public function tweenTo(x:Number, y:Number, scale:Number = 1, time:Number = 3):uint 
+		public function tweenTo(centerX:Number, centerY:Number, scale:Number, duration:Number = 1, transition:String = "easeInOut"):void
 		{
-			cancelTween();
-			var center:Point = getCenter();
-			var tweenObject:Object = {ratio: 0, x: center.x, y: center.y, scale: _touchSheet.scaleX};
-			var tweenTo:Object = {ratio: 1, x: x, y: y, scale: scale};
-			currentTween = Starling.juggler.tween(tweenObject, time, {ratio: 1, onComplete: tweenComplete, onUpdate: tweenUpdate, onUpdateArgs: [tweenObject, tweenTo]});
-			return currentTween;
-		}
-		
-		public function cancelTween():void 
-		{			
-			if (currentTween) 
-			{
-				Starling.juggler.removeByID(currentTween);
-				currentTween = 0;
-			}
-		}
-		
-		public function isTweening():Boolean 
-		{
-			return currentTween != 0;
-		}
-		
-		protected function tweenUpdate(tweenObject:Object, tweenTo:Object):void 
-		{
-			// Scale tween is much slower then position:
-			
-			var ratio:Number = tweenObject.ratio;
-			var r1:Number = tweenTransition(ratio);
-			var r2:Number = tweenTransition(ratio * 3 <= 1 ? ratio * 3 : 1); // faster ratio
-			
-			var currentScale:Number = tweenObject.scale + (tweenTo.scale - tweenObject.scale) * r1;
-			var currentX:Number = tweenObject.x + (tweenTo.x - tweenObject.x) * r2;
-			var currentY:Number = tweenObject.y + (tweenTo.y - tweenObject.y) * r2;
-			
-			_touchSheet.scaleX = _touchSheet.scaleY = currentScale;
-		}
-		
-		protected function tweenComplete():void
-		{
-			Starling.juggler.removeByID(currentTween);
-			currentTween = 0;
+			_touchSheet &_touchSheet.tweenTo(centerX, centerY, scale, transition);
 		}
 		
 		override public function dispose():void
@@ -487,10 +429,6 @@ package cz.j4w.map
 		private function onTouch(event:TouchEvent):void
 		{
 			var touch:Touch = event.getTouch(this, TouchPhase.MOVED);
-			if (touch)
-			{
-				cancelTween();
-			}
 			
 			touch = event.getTouch(markersContainer, TouchPhase.ENDED);
 			if (touch)

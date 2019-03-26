@@ -74,15 +74,12 @@ package cz.j4w.map.geo {
 			setCenterXY(GeoUtils.lon2x(long), GeoUtils.lat2y(lat));
 		}
 		
-		public function tweenToLongLat($long:Number, $lat:Number, $zoom:int = -1, $time:Number = 3):uint {
+		public function tweenToLongLat($long:Number, $lat:Number, $zoom:int = -1, $time:Number = 3, $transition:String = "easeInOut"):uint {
 			
 			if($zoom==-1)$zoom=this.zoom;
-			var numScale:Number = this.zoomToScale($zoom);
+			var numScale:Number = this.getScale($zoom);
 			
-			
-			return tweenTo(GeoUtils.lon2x($long), GeoUtils.lat2y($lat), scale, $time);
+			return tweenTo(GeoUtils.lon2x($long), GeoUtils.lat2y($lat), numScale, $time, $transition);
 		}
-	
 	}
-
 }

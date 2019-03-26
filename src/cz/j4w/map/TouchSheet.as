@@ -1,9 +1,11 @@
 package cz.j4w.map 
 {
+	import com.greensock.easing.ExpoScaleEase;
+	import com.greensock.easing.Power1;
+	
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
 	
-	import starling.animation.Transitions;
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
 	import starling.display.Sprite;
@@ -65,14 +67,24 @@ package cz.j4w.map
 			}
 		}
 		
-		private var _elasticity:Number = 0.85;
-		public function get elasticity():Number
+		protected var _touchElasticity:Number = 0.3;
+		public function get touchElasticity():Number
 		{
-			return _elasticity;
+			return _touchElasticity;
 		}
-		public function set elasticity(value:Number):void
+		public function set touchElasticity(value:Number):void
 		{
-			_elasticity = MathUtil.clamp(value, 0, 1);
+			_touchElasticity = value;
+		}
+		
+		private var _nonTouchElasticity:Number = 0.85;
+		public function get nonTouchElasticity():Number
+		{
+			return _nonTouchElasticity;
+		}
+		public function set nonTouchElasticity(value:Number):void
+		{
+			_nonTouchElasticity = MathUtil.clamp(value, 0, 1);
 		}
 		
 		private var _decelerationRatio:Number = 0.95;
@@ -158,6 +170,7 @@ package cz.j4w.map
 		}
 
 		private var scaleTweenID:uint;
+		private var viewTweenID:int; 
 		
 		/**
 		 * Image
@@ -306,11 +319,11 @@ package cz.j4w.map
 					shadowScale *= sizeDiff;
 					if (shadowScale < minimumScale) 
 					{
-						scale = shadowScale + (minimumScale - shadowScale) * (1 - Math.pow(_elasticity, ELASTICITY_EXPONENT));
+						scale = shadowScale + (minimumScale - shadowScale) * (1 - _touchElasticity);
 					}
 					else if (shadowScale > maximumScale)
 					{
-						scale = shadowScale - (shadowScale - maximumScale) * (1 - Math.pow(_elasticity, ELASTICITY_EXPONENT));
+						scale = shadowScale - (shadowScale - maximumScale) * (1 - _touchElasticity);
 					}
 					else
 					{
@@ -322,7 +335,7 @@ package cz.j4w.map
 				// After everything, apply movement gravity:
 				// Currently only works for elasticity = 0:
 				// Perhaps shadowX & Y could be applied before grabbing the touch location values?
-				if (elasticity == 0)
+				if (nonTouchElasticity == 0)
 				{
 					dispatchEventWith(Event.CHANGE);
 					var gravity:Point = getMovementGravity(Pool.getPoint());
@@ -352,8 +365,8 @@ package cz.j4w.map
 						dispatchEventWith(Event.CHANGE);
 						gravity = getMovementGravity(Pool.getPoint());
 						// Pull back according to gravity:
-						x += gravity.x * (1 - Math.pow(_elasticity, ELASTICITY_EXPONENT));
-						y += gravity.y * (1 - Math.pow(_elasticity, ELASTICITY_EXPONENT));
+						x += gravity.x * (1 - _touchElasticity);
+						y += gravity.y * (1 - _touchElasticity);
 						Pool.putPoint(gravity);
 						
 						dispatchEventWith(MOVE);
@@ -375,7 +388,8 @@ package cz.j4w.map
 		
 		protected function startTouch(numTouchPoints:int):void
 		{
-			cancelScaleTween();
+			cancelTweens();
+			
 			if (!_isTouching)
 			{
 				_isTouching = true;
@@ -398,6 +412,89 @@ package cz.j4w.map
 			}
 		}
 		
+		public function setCenter(point:Point):void
+		{
+			setCenterXY(point.x, point.y);
+		}
+		
+		public function setCenterXY(centerX:Number, centerY:Number):void 
+		{
+			if (_viewPort)
+			{
+				pivotX = centerX;
+				pivotY = centerY;
+				x = (_viewPort.width / 2) * scale;
+				y = (_viewPort.height / 2) * scale;
+				trace(pivotX, pivotY, x, y);
+			}
+		}
+		
+		/**
+		 * Uses GreenSock's amazing ExpoScaleEase to maintain constant velocity over multiple scale factors.
+		 */
+		public function tweenTo(centerX:Number, centerY:Number, scale:Number, duration:Number = 1, transition:String = "easeInOut"):void
+		{
+			if (!_viewPort)
+			{
+				return;
+			}
+			
+			cancelTweens();
+			
+			setCenterXY(_viewPort.x + _viewPort.width / 2, _viewPort.y + _viewPort.height / 2);
+			var viewCenter:Point = getViewCenter();
+			
+			var tweenTarget:Object = {
+				ratio: 0,
+				fromX: viewCenter.x,
+				toX: centerX,
+				fromY: viewCenter.y,
+				toY: centerY,
+				fromScale: this.scale,
+				toScale: scale,
+				expoScaleEase: new ExpoScaleEase(this.scale, scale),
+				expoMoveEase: new ExpoScaleEase(scale, this.scale)
+			};
+			viewTweenID = Starling.juggler.tween(tweenTarget, duration, {ratio: 1, transition: transition, onUpdate: onViewTweenUpdate, onUpdateArgs: [tweenTarget]});
+		}
+		
+		protected function onViewTweenUpdate(tweenTarget:Object):void 
+		{
+			var ratio:Number = (tweenTarget.expoScaleEase as ExpoScaleEase).getRatio(tweenTarget.ratio);
+			var mRatio:Number = (tweenTarget.expoMoveEase as ExpoScaleEase).getRatio(tweenTarget.ratio);
+			
+			var currentScale:Number = tweenTarget.fromScale + (tweenTarget.toScale - tweenTarget.fromScale) * ratio;
+			var currentX:Number = tweenTarget.fromX + (tweenTarget.toX - tweenTarget.fromX) * mRatio;
+			var currentY:Number = tweenTarget.fromY + (tweenTarget.toY - tweenTarget.fromY) * mRatio;
+			
+			setCenterXY(currentX, currentY);
+			scale = currentScale;
+			
+			dispatchEventWith(Event.CHANGE);
+		}
+		
+		public function getViewCenter():Point 
+		{
+			return new Point(viewPort.x + viewPort.width / 2, viewPort.y + viewPort.height / 2);
+		}
+		
+		public function zoomIn(center:Point = null):void
+		{
+			zoomInOut(true, center);
+		}
+		
+		public function zoomOut(center:Point = null):void
+		{
+			zoomInOut(false, center);
+		}
+		
+		protected function zoomInOut($in:Boolean = true, center:Point = null):void
+		{
+			var newScale:Number = scale / ($in ? 0.5 : 2);
+			center ||= getViewCenter();
+			scaleTo(newScale, center.x, center.y, 0.3);
+		}
+		
 		public function scaleTo(newScale:Number, pivotX:Number = 0, pivotY:Number = 0, duration:Number = 0):void
 		{
 			if (_isTouching)
@@ -405,7 +502,7 @@ package cz.j4w.map
 				return;
 			}
 			
-			cancelScaleTween();
+			cancelTweens();
 			
 			this.x += (pivotX - this.pivotX) * scale;
 			this.y += (pivotY - this.pivotY) * scale;
@@ -424,7 +521,7 @@ package cz.j4w.map
 				if (duration > 0)
 				{
 					scaleTweenID = Starling.juggler.tween(this, duration, {
-						transition: Transitions.EASE_OUT,
+						transitionFunc: new ExpoScaleEase(scale, finalScale, Power1.easeOut).getRatio,
 						scale: finalScale,
 						onUpdate: function():void
 						{
@@ -442,19 +539,24 @@ package cz.j4w.map
 			}
 		}
 		
-		protected function cancelScaleTween():void
+		protected function cancelTweens():void
 		{
 			if (scaleTweenID)
 			{
 				Starling.juggler.removeByID(scaleTweenID);
 				scaleTweenID = 0;
 			}
+			if (viewTweenID) 
+			{
+				Starling.juggler.removeByID(viewTweenID);
+				viewTweenID = 0;
+			}
 		}
 		
 		protected function applyScaleBounds(animate:Boolean):void
 		{
-			cancelScaleTween();
-			scaleTo(scale, pivotX, pivotY, animate ? _elasticity * 0.4 : 0);
+			cancelTweens();
+			scaleTo(scale, pivotX, pivotY, animate ? _touchElasticity : 0);
 		}
 		
 		protected function getMovementGravity(outPoint:Point = null):Point
@@ -523,11 +625,11 @@ package cz.j4w.map
 				if (!_snapToBounds && (Math.abs(_velocity.length) > MINIMUM_VELOCITY || Math.abs(gravity.length) > MINIMUM_VELOCITY))
 				{
 					// Pull back according to gravity:
-					x += gravity.x * (1 - _elasticity);
-					y += gravity.y * (1 - _elasticity);
+					x += gravity.x * (1 - _nonTouchElasticity);
+					y += gravity.y * (1 - _nonTouchElasticity);
 					// Adjust velocity for the next frame:
-					_velocity.x *= decelerationRatio * (gravity.x ? _elasticity : 1);
-					_velocity.y *= decelerationRatio * (gravity.y ? _elasticity : 1);
+					_velocity.x *= decelerationRatio * (gravity.x ? _nonTouchElasticity : 1);
+					_velocity.y *= decelerationRatio * (gravity.y ? _nonTouchElasticity : 1);
 				}
 				else
 				{
@@ -565,6 +667,12 @@ package cz.j4w.map
 			_snapToBounds = true;
 			_velocity.setTo(0, 0);
 			validateNow();
+		}
+		
+		override public function dispose():void
+		{
+			cancelTweens();
+			super.dispose();
 		}
 	}
 }
