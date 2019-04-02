@@ -29,9 +29,10 @@ package cz.j4w.map
 		public static const ZOOM:String = "zoom";
 		public static const ROTATE:String = "rotate";
 		
-		protected static const MINIMUM_VELOCITY:Number = 0.1;
-		// Using this for now, but a more curved approach would be better.
-		protected static const ELASTICITY_EXPONENT:int = 6;
+		public static const MINIMUM_VELOCITY:Number = 0.1;
+		
+		/** Previous velocities are saved for an accurate measurement at the end of a touch. */
+		private static const MAXIMUM_SAVED_VELOCITY_COUNT:int = 3;
 		
 		public var disableMovement:Boolean;
 		public var disableRotation:Boolean;
@@ -106,7 +107,7 @@ package cz.j4w.map
 		{
 			_movementBounds = value;
 			invalidateBounds();
-			_snapToBounds = true;
+			snapToBoundsPending = true;
 		}
 		
 		private var _viewPort:Rectangle;
@@ -118,7 +119,7 @@ package cz.j4w.map
 		{
 			_viewPort = value;
 			invalidateBounds();
-			_snapToBounds = true;
+			snapToBoundsPending = true;
 		}
 		
 		/** Set this when the viewport size changes or when TouchSheet dispatches Event.CHANGE so that movementBounds can be applied. */ 
@@ -159,10 +160,16 @@ package cz.j4w.map
 		private var touchBID:int = -1;
 		
 		private var boundsInvalid:Boolean
-		private var _snapToBounds:Boolean;
+		private var snapToBoundsPending:Boolean;
 		private var shadowX:Number;
 		private var shadowY:Number;
 		private var shadowScale:Number;
+		private var previousX:Number;
+		private var previousY:Number;
+		private var previousPivotX:Number;
+		private var previousPivotY:Number;
+		private var previousVelocities:Vector.<Point> = new Vector.<Point>;
+		private var pendingVelocityChange:Boolean;
 		private var _velocity:Point = new Point;
 		public function get velocity():Point
 		{
@@ -211,10 +218,6 @@ package cz.j4w.map
 			
 			var prevAID:int = touchAID;
 			var prevBID:int = touchBID;
-			var prevX:Number = x;
-			var prevY:Number = y;
-			var prevPivotX:Number = pivotX;
-			var prevPivotY:Number = pivotY;
 			
 			// first check if the existing touches ended
 			if (touchBID != -1)
@@ -343,6 +346,7 @@ package cz.j4w.map
 					y += gravity.y;
 				}
 				
+				pendingVelocityChange = true;
 				dispatchEventWith(MOVE);
 			}
 			else if (touchAID != -1) //single touch gesture
@@ -369,6 +373,7 @@ package cz.j4w.map
 						y += gravity.y * (1 - _touchElasticity);
 						Pool.putPoint(gravity);
 						
+						pendingVelocityChange = true;
 						dispatchEventWith(MOVE);
 					}
 					Pool.putPoint(delta);
@@ -378,11 +383,24 @@ package cz.j4w.map
 			{
 				endTouch();
 			}
-			
+		}
+		
+		protected function saveVelocity():void
+		{
+			pendingVelocityChange = false;
 			if (_isTouching)
 			{
-				_velocity.setTo((x - pivotX) - (prevX - prevPivotX), (y - pivotY) - (prevY - prevPivotY));
+				_velocity.setTo((x - pivotX) - (previousX - previousPivotX), (y - pivotY) - (previousY - previousPivotY));
+				previousVelocities.push(Pool.getPoint(_velocity.x, _velocity.y));
+				if (previousVelocities.length > MAXIMUM_SAVED_VELOCITY_COUNT)
+				{
+					Pool.putPoint(previousVelocities.shift());
+				}
 				invalidateBounds();
+				previousX = x;
+				previousY = y;
+				previousPivotX = pivotX;
+				previousPivotY = pivotY;
 			}
 		}
 		
@@ -392,10 +410,16 @@ package cz.j4w.map
 			
 			if (!_isTouching)
 			{
+				killVelocity();
 				_isTouching = true;
+				previousX = x;
+				previousY = y;
+				previousPivotX = pivotX;
+				previousPivotY = pivotY;
 				shadowX = x;
 				shadowY = y;
 				shadowScale = scale;
+				addEventListener(Event.ENTER_FRAME, saveVelocity);
 				dispatchEventWith(TOUCH_START);
 			}
 		}
@@ -408,6 +432,24 @@ package cz.j4w.map
 				touchAID = touchBID = -1;
 				applyScaleBounds(true);
 				invalidateBounds();
+				removeEventListener(Event.ENTER_FRAME, saveVelocity);
+				
+				// Calculate the final velocity based on an average of the saved velocities:
+				var weight:Number = 1;
+				var totalWeight:Number = 0;
+				var sumX:Number = 0;
+				var sumY:Number = 0;
+				for (var i:int = 0, l:int = previousVelocities.length; i < l; i++)
+				{
+					var v:Point = previousVelocities.shift();
+					sumX += v.x * weight;
+					sumY += v.y * weight;
+					totalWeight += weight;
+					Pool.putPoint(v);
+					weight *= 1.33;
+				}
+				_velocity.setTo(sumX / totalWeight || 0, sumY / totalWeight || 0);
+				
 				dispatchEventWith(TOUCH_END);
 			}
 		}
@@ -425,14 +467,18 @@ package cz.j4w.map
 				pivotY = centerY;
 				x = (_viewPort.width / 2) * scale;
 				y = (_viewPort.height / 2) * scale;
-				trace(pivotX, pivotY, x, y);
 			}
 		}
 		
 		/**
 		 * Uses GreenSock's amazing ExpoScaleEase to maintain constant velocity over multiple scale factors.
+		 * @param centerX Pass NaN to keep this value as is.
+		 * @param centerY Pass NaN to keep this value as is.
+		 * @param scale Pass NaN to keep this value as is.
+		 * @param duration In seconds.
+		 * @param transition A value of <code>starling.animation.Transitions</code>.
 		 */
-		public function tweenTo(centerX:Number, centerY:Number, scale:Number, duration:Number = 1, transition:String = "easeInOut"):void
+		public function tweenTo(centerX:Number = NaN, centerY:Number = NaN, scale:Number = NaN, duration:Number = 1, transition:String = "easeInOut"):void
 		{
 			if (!_viewPort)
 			{
@@ -447,25 +493,31 @@ package cz.j4w.map
 			var tweenTarget:Object = {
 				ratio: 0,
 				fromX: viewCenter.x,
-				toX: centerX,
+				toX: isNaN(centerX) ? viewCenter.x : centerX,
 				fromY: viewCenter.y,
-				toY: centerY,
+				toY: isNaN(centerY) ? viewCenter.y : centerY,
 				fromScale: this.scale,
-				toScale: scale,
+				toScale: isNaN(scale) ? this.scale : scale,
 				expoScaleEase: new ExpoScaleEase(this.scale, scale),
 				expoMoveEase: new ExpoScaleEase(scale, this.scale)
 			};
-			viewTweenID = Starling.juggler.tween(tweenTarget, duration, {ratio: 1, transition: transition, onUpdate: onViewTweenUpdate, onUpdateArgs: [tweenTarget]});
+			viewTweenID = Starling.juggler.tween(tweenTarget, duration, {
+				ratio: 1, 
+				transition: transition, 
+				onUpdate: onViewTweenUpdate, 
+				onUpdateArgs: [tweenTarget],
+				onComplete: killVelocity
+			});
 		}
 		
 		protected function onViewTweenUpdate(tweenTarget:Object):void 
 		{
-			var ratio:Number = (tweenTarget.expoScaleEase as ExpoScaleEase).getRatio(tweenTarget.ratio);
-			var mRatio:Number = (tweenTarget.expoMoveEase as ExpoScaleEase).getRatio(tweenTarget.ratio);
+			var scaleRatio:Number = (tweenTarget.expoScaleEase as ExpoScaleEase).getRatio(tweenTarget.ratio);
+			var moveRatio:Number = (tweenTarget.expoMoveEase as ExpoScaleEase).getRatio(tweenTarget.ratio);
 			
-			var currentScale:Number = tweenTarget.fromScale + (tweenTarget.toScale - tweenTarget.fromScale) * ratio;
-			var currentX:Number = tweenTarget.fromX + (tweenTarget.toX - tweenTarget.fromX) * mRatio;
-			var currentY:Number = tweenTarget.fromY + (tweenTarget.toY - tweenTarget.fromY) * mRatio;
+			var currentScale:Number = tweenTarget.fromScale + (tweenTarget.toScale - tweenTarget.fromScale) * scaleRatio;
+			var currentX:Number = tweenTarget.fromX + (tweenTarget.toX - tweenTarget.fromX) * moveRatio;
+			var currentY:Number = tweenTarget.fromY + (tweenTarget.toY - tweenTarget.fromY) * moveRatio;
 			
 			setCenterXY(currentX, currentY);
 			scale = currentScale;
@@ -527,7 +579,8 @@ package cz.j4w.map
 						{
 							invalidateBounds();
 							validateNow();
-						}
+						},
+						onComplete: killVelocity
 					});
 				}
 				else
@@ -610,8 +663,8 @@ package cz.j4w.map
 			
 			if (!_isTouching) 
 			{
-				var prevX:Number = x;
-				var prevY:Number = y;
+				previousX = x;
+				previousY = y;
 				
 				// Move according to velocity:
 				x += velocity.x;
@@ -622,7 +675,7 @@ package cz.j4w.map
 				// Get the gravity having moved:
 				var gravity:Point = getMovementGravity(Pool.getPoint());
 				
-				if (!_snapToBounds && (Math.abs(_velocity.length) > MINIMUM_VELOCITY || Math.abs(gravity.length) > MINIMUM_VELOCITY))
+				if (!snapToBoundsPending && (Math.abs(_velocity.length) > MINIMUM_VELOCITY || Math.abs(gravity.length) > MINIMUM_VELOCITY))
 				{
 					// Pull back according to gravity:
 					x += gravity.x * (1 - _nonTouchElasticity);
@@ -638,14 +691,15 @@ package cz.j4w.map
 					y += gravity.y;
 				}
 				
+				
 				Pool.putPoint(gravity);
 				
-				if (prevX.toFixed(2) == x.toFixed(2) && prevY.toFixed(2) == y.toFixed(2)) // Full precision may result in a flip-flop effect.
+				if (previousX.toFixed(2) == x.toFixed(2) && previousY.toFixed(2) == y.toFixed(2)) // Full precision may result in a flip-flop effect.
 				{
 					boundsInvalid = false;
 				}
 				
-				_snapToBounds = false;
+				snapToBoundsPending = false;
 			}
 			else
 			{
@@ -657,6 +711,10 @@ package cz.j4w.map
 		public function killVelocity():void
 		{
 			_velocity.setTo(0, 0);
+			while (previousVelocities.length)
+			{
+				Pool.putPoint(previousVelocities.pop());
+			}
 		}
 		
 		public function snapToBounds():void
@@ -664,7 +722,7 @@ package cz.j4w.map
 			endTouch();
 			applyScaleBounds(false);
 			invalidateBounds();
-			_snapToBounds = true;
+			snapToBoundsPending = true;
 			_velocity.setTo(0, 0);
 			validateNow();
 		}
@@ -672,6 +730,7 @@ package cz.j4w.map
 		override public function dispose():void
 		{
 			cancelTweens();
+			killVelocity();
 			super.dispose();
 		}
 	}

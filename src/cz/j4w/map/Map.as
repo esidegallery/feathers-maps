@@ -8,8 +8,10 @@ package cz.j4w.map
 	import cz.j4w.map.events.MapEventType;
 	
 	import feathers.core.FeathersControl;
+	import feathers.utils.pixelsToInches;
 	import feathers.utils.math.clamp;
 	import feathers.utils.textures.TextureCache;
+	import feathers.utils.touch.TapToEventPlus;
 	
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
@@ -21,11 +23,10 @@ package cz.j4w.map
 	import starling.events.TouchPhase;
 	import starling.utils.Pool;
 	
-	/**
-	 * Main Starling class. Provides demo Feathers UI for map controll.
-	 */
 	public class Map extends FeathersControl 
 	{
+		protected static const MIN_DRAG_DISTANCE:Number = 0.04;
+		
 		public static const MIN_ZOOM:int = 1;
 		public static const MAX_ZOOM:int = 20;
 		
@@ -44,9 +45,6 @@ package cz.j4w.map
 		protected var layers:Dictionary;
 		protected var circles:Dictionary;
 		protected var markers:Dictionary;
-		
-		private var markerDisplays:Vector.<DisplayObject>;
-		private var circleDisplays:Vector.<DisplayObject>;
 		
 		public function get viewPort():Rectangle 
 		{
@@ -82,8 +80,6 @@ package cz.j4w.map
 			markers = new Dictionary;
 			
 			mapTilesBuffer = new MapTilesBuffer;
-			markerDisplays = new Vector.<DisplayObject>;
-			circleDisplays = new Vector.<DisplayObject>;
 			
 			mapContainer = new Sprite;
 			markersContainer = new Sprite;
@@ -92,7 +88,6 @@ package cz.j4w.map
 			mapContainer.addChild(markersContainer);
 			
 			_touchSheet = new TouchSheet(mapContainer, null, mapOptions);
-			_touchSheet.scale = mapOptions.initialScale || 1;
 			addChild(_touchSheet);
 		}
 		
@@ -109,7 +104,7 @@ package cz.j4w.map
 				update();
 			});
 			
-			addEventListener(TouchEvent.TOUCH, onTouch);
+			addEventListener(TouchEvent.TOUCH, touchHandler);
 			stage.starling.nativeStage.addEventListener(MouseEvent.MOUSE_WHEEL, onNativeStageMouseWheel);
 		}
 		
@@ -119,6 +114,7 @@ package cz.j4w.map
 			
 			if (!isCreated)
 			{
+				_touchSheet.scale = mapOptions.initialScale || 1;
 				if (mapOptions.initialCenter)
 				{
 					_touchSheet.setCenter(mapOptions.initialCenter);
@@ -154,20 +150,31 @@ package cz.j4w.map
 			}
 		}
 		
+		public function loadAllNow():void
+		{
+			update();
+			for (var id:String in layers) 
+			{
+				getLayer(id).loadAllTilesNow();
+			}
+		}
+		
 		protected function updateMarkersAndCircles():void 
 		{
-			var sx:Number = 1 / _touchSheet.scaleX;
+			var staticScale:Number = 1 / _touchSheet.scaleX;
 			
-			for (var i:int = 0, n:int = markersContainer.numChildren; i < n; i++) 
+			for each (var marker:MapMarker in getAllMarkers())
 			{
-				var marker:DisplayObject = markersContainer.getChildAt(i); // scaling markers always to be 1:1
-//				marker.pivotX = marker.width / 2;
-//				marker.pivotY = marker.height / 2;
-//				marker.scaleX = marker.scaleY = sx;
-				marker.visible = _touchSheet.viewPort.intersects(marker.bounds);
+				if (marker.displayObject)
+				{
+					if (!marker.scaleWithMap)
+					{
+						marker.displayObject.scale = staticScale;
+					}
+				}
 			}
 			
-			for (i = 0, n = circlesContainer.numChildren; i < n; i++)
+			for (var i:int = 0, n:int = circlesContainer.numChildren; i < n; i++)
 			{
 				var circle:DisplayObject = circlesContainer.getChildAt(i);
 				circle.visible = _touchSheet.viewPort.intersects(circle.bounds);
@@ -182,7 +189,7 @@ package cz.j4w.map
 			{
 				options ||= new MapLayerOptions;
 				
-				var childIndex:uint = options.index >= 0 ? options.index : mapContainer.numChildren;
+				var childIndex:uint = options.index >= 0 ? Math.min(options.index, mapContainer.numChildren) : mapContainer.numChildren;
 				
 				layer = new layerFactoryClass(this, id, options, mapTilesBuffer) as MapLayer;
 				if (!layer)
@@ -194,14 +201,14 @@ package cz.j4w.map
 				mapContainer.addChildAt(layer, childIndex);			
 				mapContainer.addChild(circlesContainer); // Circles above layers.
 				mapContainer.addChild(markersContainer); // Markers above circles.
-			
+				
 				layers[id] = layer;
 				invalidate(INVALIDATION_FLAG_LAYOUT);
 			}
 			
 			return layer;
 		}
-
+		
 		public function removeLayer(id:String):MapLayer
 		{
 			var layer:MapLayer = layers[id] as MapLayer;
@@ -232,38 +239,28 @@ package cz.j4w.map
 			return layers[id];
 		}
 		
-		public function addMarker(id:String, x:Number, y:Number, displayObject:DisplayObject, data:Object = null):MapMarker
+		public function addMarker(id:String, x:Number, y:Number, displayObject:DisplayObject, data:Object = null, scaleWithMap:Boolean = false):MapMarker
 		{
+			if (!displayObject)
+			{
+				return null;
+			}
+			
+			var newMarker:MapMarker = new MapMarker(id, displayObject, data, scaleWithMap);
+			markers[id] = newMarker;
+			
 			displayObject.name = id;
 			displayObject.x = x;
 			displayObject.y = y;
+
+			new TapToEventPlus(displayObject, MapEventType.MARKER_TRIGGERED);
+			displayObject.addEventListener(MapEventType.MARKER_TRIGGERED, markerTriggeredHandler);
 			
-			// Find the index to insertAt, based on y:
-			var index:int = 0;
-			for (var i:int = 0, l:int = markerDisplays.length; i < l; i++)
-			{
-				if (y > markerDisplays[i].y)
-				{
-					if (i == l-1) // If none are less than, insert last:
-					{
-						index = l;
-					}
-				}
-				else
-				{
-					index = i; // Finally found 1 that it is less than, so use it:				
-					break;
-				}				
-			}
-			
-			markerDisplays.insertAt(index, displayObject);
-			markersContainer.addChildAt(displayObject, index);
-			
-			var mapMarker:MapMarker = new MapMarker(id, displayObject, data);
-			markers[id] = mapMarker;
+			markersContainer.addChild(displayObject);
+			sortMarkers();
 			invalidate(INVALIDATION_FLAG_LAYOUT);
 			
-			return mapMarker;
+			return newMarker;
 		}
 		
 		public function getMarker(id:String):MapMarker
@@ -273,13 +270,13 @@ package cz.j4w.map
 		
 		public function getAllMarkers():Vector.<MapMarker>
 		{
-			var markers:Vector.<MapMarker> = new Vector.<MapMarker>;
-			for (var key:Object in markers)
+			var allMarkers:Vector.<MapMarker> = new Vector.<MapMarker>;
+			for (var id:Object in markers)
 			{
-				var marker:MapMarker = markers[key] as MapMarker;
-				marker && markers.push(marker);
+				var marker:MapMarker = markers[id] as MapMarker;
+				marker && allMarkers.push(marker);
 			}
-			return markers;
+			return allMarkers;
 		}
 		
 		public function removeMarker(id:String, dispose:Boolean = false):MapMarker 
@@ -289,7 +286,11 @@ package cz.j4w.map
 			if (mapMarker)
 			{
 				var displayObject:DisplayObject = mapMarker.displayObject;
-				displayObject && displayObject.removeFromParent(dispose);
+				if (displayObject)
+				{
+					displayObject.removeEventListener(MapEventType.MARKER_TRIGGERED, markerTriggeredHandler);
+					displayObject.removeFromParent(dispose);
+				}
 				delete markers[id];
 				invalidate(INVALIDATION_FLAG_LAYOUT);
 			}
@@ -299,10 +300,53 @@ package cz.j4w.map
 		
 		public function removeAllMarkers(dispose:Boolean = false):void 
 		{
-			markersContainer.removeChildren(0, -1, dispose);
-			markers = new Dictionary();
-			markerDisplays.length = 0;
-			invalidate(INVALIDATION_FLAG_LAYOUT);
+			for (var id:String in markers)
+			{
+				removeMarker(id, dispose);
+			}
+		}
+		
+		public function sortMarkers():void
+		{
+			var markers:Vector.<MapMarker> = getAllMarkers();
+			markers.sort(markerCompareFunction);
+			for (var i:int = 0, l:int = markers.length; i < l; i++)
+			{
+				markersContainer.addChildAt(markers[i].displayObject, i);
+			}
+		}
+		
+		protected function markerCompareFunction(marker1:MapMarker, marker2:MapMarker):Number
+		{
+			if (marker1.alwaysOnTop && !marker2.alwaysOnTop)
+			{
+				return 1;
+			}
+			if (!marker1.alwaysOnTop && marker2.alwaysOnTop)
+			{
+				return -1;
+			}
+			
+			if (marker1.scaleWithMap)
+			{
+				if (marker2.scaleWithMap) // Compare y's:
+				{
+					return marker1.displayObject.y - marker2.displayObject.y;
+				}
+				else // marker 2 will be higher: 
+				{
+					return -1;
+				}
+			}
+			
+			if (marker2.scaleWithMap)
+			{
+				return 1;
+			}
+			else
+			{
+				return marker1.displayObject.y - marker2.displayObject.y;
+			}
 		}
 		
 		public function addCircleOverlay(id:String, x:Number, y:Number, displayObject:DisplayObject, data:Object = null):MapCircleOverlay
@@ -311,7 +355,6 @@ package cz.j4w.map
 			displayObject.x = x;
 			displayObject.y = y;
 			
-			circleDisplays.push(displayObject);
 			circlesContainer.addChild(displayObject);
 			
 			var mapCircle:MapCircleOverlay = new MapCircleOverlay(id, displayObject, data);
@@ -345,7 +388,6 @@ package cz.j4w.map
 		{
 			circlesContainer.removeChildren(0, -1, dispose);
 			circles = new Dictionary();
-			circleDisplays.length = 0;
 			invalidate(INVALIDATION_FLAG_LAYOUT);
 		}
 		
@@ -365,11 +407,6 @@ package cz.j4w.map
 				s >>= 1;
 				++_zoom;
 			}
-		}
-		
-		private function sortMarkersFunction(d1:DisplayObject, d2:DisplayObject):int 
-		{
-			return d1.x > d2.x ? 1 : -1;
 		}
 		
 		/** Converts the input zoom level to the equivalent scale value. */
@@ -397,7 +434,7 @@ package cz.j4w.map
 		{
 			_touchSheet && _touchSheet.zoomOut(center);
 		}
-			
+		
 		public function zoomTo(level:int, time:Number = 0.3):void
 		{
 			var center:Point = getCenter();
@@ -426,19 +463,68 @@ package cz.j4w.map
 		//********************  Event Listeners  **********************//
 		//*************************************************************//
 		
-		private function onTouch(event:TouchEvent):void
+		private var touchPointID:int = -1;
+		private var dragDistance:Number = 0;
+		
+		private function touchHandler(event:TouchEvent):void
 		{
-			var touch:Touch = event.getTouch(this, TouchPhase.MOVED);
-			
-			touch = event.getTouch(markersContainer, TouchPhase.ENDED);
-			if (touch)
+			if (!isEnabled || stage == null)
 			{
-				var displayObject:DisplayObject = touch.target;
-				if (displayObject && displayObject.parent.parent == markersContainer)
+				touchPointID = -1;
+				return;
+			}
+			
+			if (touchPointID >= 0)
+			{
+				var touch:Touch = event.getTouch(this, null, touchPointID);
+				
+				if (!touch)
 				{
-					var marker:MapMarker = getMarker(displayObject.parent.name);
-					dispatchEventWith(MapEventType.MARKER_TRIGGERED, false, marker);
+					return;
 				}
+				
+				if (touch.phase == TouchPhase.MOVED)
+				{
+					var point:Point = Pool.getPoint(touch.globalX, touch.globalY);
+					var prevPoint:Point = Pool.getPoint(touch.previousGlobalX, touch.previousGlobalY);
+					dragDistance += Math.abs(prevPoint.subtract(point).length);
+					Pool.putPoint(point);
+					Pool.putPoint(prevPoint);
+				}
+				else if (touch.phase == TouchPhase.ENDED)
+				{
+					touchPointID = -1;
+				}
+			}
+			else 
+			{
+				touch = event.getTouch(this, TouchPhase.BEGAN);
+				
+				if (!touch)
+				{
+					return;
+				}
+				
+				touchPointID = touch.id;
+				dragDistance = 0;
+			}
+		}
+		
+		private function markerTriggeredHandler(event:Event):void
+		{
+			var displayObject:DisplayObject = event.currentTarget as DisplayObject;
+			if (!displayObject)
+			{
+				return;
+			}
+			var marker:MapMarker = getMarker(displayObject.name);
+			if (!marker)
+			{
+				return;
+			}
+			if (Math.abs(_touchSheet.velocity.length) < TouchSheet.MINIMUM_VELOCITY && pixelsToInches(dragDistance) < MIN_DRAG_DISTANCE)
+			{
+				dispatchEventWith(MapEventType.MARKER_TRIGGERED, false, marker);
 			}
 		}
 		
@@ -447,10 +533,11 @@ package cz.j4w.map
 			if (isCreated && isEnabled && _touchSheet)
 			{
 				var loc:Point = Pool.getPoint(event.stageX, event.stageY);
-				_touchSheet.globalToLocal(loc, loc);
+				var hitTest:DisplayObject = root.hitTest(loc);
 				
-				if (_touchSheet.hitTest(loc))
+				if (_touchSheet == hitTest || _touchSheet.contains(hitTest))
 				{
+					_touchSheet.globalToLocal(loc, loc);
 					if (event.delta > 0)
 					{
 						zoomIn(loc);

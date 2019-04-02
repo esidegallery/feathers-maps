@@ -9,5 +9,4 @@ package cz.j4w.map.events
 		/** <code>Event.data</code> is <code>MapMarker</code>. */
 		static public const MARKER_TRIGGERED:String = "markerTriggered";
 	}
-
 }

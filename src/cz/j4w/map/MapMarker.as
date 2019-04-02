@@ -26,31 +26,18 @@ package cz.j4w.map
 			return _displayObject;
 		}
 		
-		/** Delegate property for <code>displayObject.x</code>. */ 
-		public function get x():Number 
-		{
-			return displayObject.x;
-		}
-		public function set x(value:Number):void 
-		{
-			displayObject.x = value;
-		}
+		public var scaleWithMap:Boolean;
 		
-		/** Delegate property for <code>displayObject.y</code>. */ 
-		public function get y():Number 
-		{
-			return displayObject.y;
-		}
-		public function set y(value:Number):void 
-		{
-			displayObject.y = value;
-		}
+		/** Set this, followed by <code>Map.sortMarkers</code> to make the marker aways appear on top. */
+		public var alwaysOnTop:Boolean;
 		
-		public function MapMarker(id:String, displayObject:DisplayObject, data:Object) 
+		public function MapMarker(id:String, displayObject:DisplayObject, data:Object, scaleWithMap:Boolean = false, alwaysOnTop:Boolean = false) 
 		{
 			_id = id;
 			_displayObject = displayObject;
 			_data = data;
+			this.scaleWithMap = scaleWithMap;
+			this.alwaysOnTop = alwaysOnTop;
 		}
 	}
 }
