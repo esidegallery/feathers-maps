@@ -501,13 +501,27 @@ package cz.j4w.map
 				expoScaleEase: new ExpoScaleEase(this.scale, scale),
 				expoMoveEase: new ExpoScaleEase(scale, this.scale)
 			};
-			viewTweenID = Starling.juggler.tween(tweenTarget, duration, {
-				ratio: 1, 
-				transition: transition, 
-				onUpdate: onViewTweenUpdate, 
-				onUpdateArgs: [tweenTarget],
-				onComplete: killVelocity
-			});
+			if (duration > 0)
+			{
+				viewTweenID = Starling.juggler.tween(tweenTarget, duration, {
+					ratio: 1, 
+					transition: transition, 
+					onUpdate: onViewTweenUpdate, 
+					onUpdateArgs: [tweenTarget],
+					onComplete: function():void
+					{
+						tweenTarget.ratio = 1;
+						onViewTweenUpdate(tweenTarget);
+						killVelocity();
+					}
+				});
+			}
+			else
+			{
+				tweenTarget.ratio = 1;
+				onViewTweenUpdate(tweenTarget);
+				killVelocity();
+			}
 		}
 		
 		protected function onViewTweenUpdate(tweenTarget:Object):void 

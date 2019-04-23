@@ -65,6 +65,20 @@ package cz.j4w.map
 		
 		public var textureCache:TextureCache;
 		
+		private var _suspendElementUpdate:Boolean = false;
+		public function get suspendElementUpdate():Boolean
+		{
+			return _suspendElementUpdate;
+		}
+		public function set suspendElementUpdate(value:Boolean):void
+		{
+			_suspendElementUpdate = value;
+			if (!_suspendElementUpdate)
+			{
+				update();
+			}
+		}
+		
 		/** 
 		 * Defaults to <code>MapLayer</code>. The class contructor needs to have the following signature:<br>
 		 * <code>MapLayer(map:Map, id:String, options:MapLayerOptions, buffer:MapTilesBuffer)</code> 
@@ -114,7 +128,10 @@ package cz.j4w.map
 			
 			if (!isCreated)
 			{
-				_touchSheet.scale = mapOptions.initialScale || 1;
+				if (mapOptions.initialScale)
+				{
+					_touchSheet.scale = mapOptions.initialScale || 1;
+				}
 				if (mapOptions.initialCenter)
 				{
 					_touchSheet.setCenter(mapOptions.initialCenter);
@@ -142,11 +159,15 @@ package cz.j4w.map
 			mask.getBounds(_touchSheet, _touchSheet.viewPort);
 			_touchSheet.invalidateBounds();
 			
-			updateMarkersAndCircles();
 			updateZoomAndScale();
-			for (var id:String in layers) 
+			
+			if (!_suspendElementUpdate)
 			{
-				getLayer(id).update();
+				updateMarkersAndCircles();
+				for (var id:String in layers) 
+				{
+					getLayer(id).update();
+				}
 			}
 		}
 		
@@ -252,7 +273,7 @@ package cz.j4w.map
 			displayObject.name = id;
 			displayObject.x = x;
 			displayObject.y = y;
-
+			
 			new TapToEventPlus(displayObject, MapEventType.MARKER_TRIGGERED);
 			displayObject.addEventListener(MapEventType.MARKER_TRIGGERED, markerTriggeredHandler);
 			
