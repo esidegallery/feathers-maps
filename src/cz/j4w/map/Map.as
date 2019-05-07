@@ -11,7 +11,7 @@ package cz.j4w.map
 	import feathers.utils.pixelsToInches;
 	import feathers.utils.math.clamp;
 	import feathers.utils.textures.TextureCache;
-	import feathers.utils.touch.TapToEventPlus;
+	import feathers.utils.touch.TapToEventExtended;
 	
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
@@ -274,7 +274,7 @@ package cz.j4w.map
 			displayObject.x = x;
 			displayObject.y = y;
 			
-			new TapToEventPlus(displayObject, MapEventType.MARKER_TRIGGERED);
+			new TapToEventExtended(displayObject, MapEventType.MARKER_TRIGGERED);
 			displayObject.addEventListener(MapEventType.MARKER_TRIGGERED, markerTriggeredHandler);
 			
 			markersContainer.addChild(displayObject);
@@ -551,7 +551,7 @@ package cz.j4w.map
 		
 		private function onNativeStageMouseWheel(event:MouseEvent):void 
 		{
-			if (isCreated && isEnabled && _touchSheet)
+			if (isCreated && isEnabled && _touchSheet && !_touchSheet.disableZooming)
 			{
 				var loc:Point = Pool.getPoint(event.stageX, event.stageY);
 				var hitTest:DisplayObject = root.hitTest(loc);
