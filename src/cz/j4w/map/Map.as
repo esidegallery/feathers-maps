@@ -538,6 +538,10 @@ package cz.j4w.map
 			{
 				return;
 			}
+			if (displayObject is FeathersControl && !(displayObject as FeathersControl).isEnabled)
+			{
+				return;
+			}
 			var marker:MapMarker = getMarker(displayObject.name);
 			if (!marker)
 			{
