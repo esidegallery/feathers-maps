@@ -160,10 +160,6 @@ package cz.j4w.map
 				
 				mask.getBounds(_touchSheet, _touchSheet.viewPort);
 			}
-			else
-			{
-				trace("NO MASK");
-			}
 			_touchSheet.invalidateBounds();
 			
 			updateZoomAndScale();
