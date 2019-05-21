@@ -6,6 +6,8 @@ package cz.j4w.map
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
 	
+	import feathers.utils.math.clamp;
+	
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
 	import starling.display.Sprite;
@@ -490,14 +492,50 @@ package cz.j4w.map
 			setCenterXY(_viewPort.x + _viewPort.width / 2, _viewPort.y + _viewPort.height / 2);
 			var viewCenter:Point = getViewCenter();
 			
+			var toScale:Number = isNaN(scale) ? this.scale : clamp(scale, minimumScale, maximumScale);
+			var scaleDiff:Number = toScale / this.scale;
+			
+			var projectedViewPortWidth:Number = _viewPort.width / scaleDiff;
+			var projectedViewPortHeight:Number = _viewPort.height / scaleDiff;
+			
+			if (movementBounds)
+			{
+				if (projectedViewPortWidth > movementBounds.width)
+				{
+					var minToX:Number = movementBounds.left + movementBounds.width / 2;
+					var maxToX:Number = minToX;
+				}
+				else
+				{
+					minToX = movementBounds.left + projectedViewPortWidth / 2;
+					maxToX = movementBounds.right - projectedViewPortWidth / 2;
+				}
+				if (projectedViewPortHeight > movementBounds.height)
+				{
+					var minToY:Number = movementBounds.top + movementBounds.height / 2;
+					var maxToY:Number = minToY;
+				}
+				else
+				{
+					minToY = movementBounds.top + projectedViewPortHeight / 2;
+					maxToY = movementBounds.bottom - projectedViewPortHeight / 2;
+				}
+			}
+			else
+			{
+				minToX = maxToX = minToY = maxToY = Number.MAX_VALUE;
+			}
+			
+			// Work out a min/max centerX/Y based on projected 
+			
 			var tweenTarget:Object = {
 				ratio: 0,
 				fromX: viewCenter.x,
-				toX: isNaN(centerX) ? viewCenter.x : centerX,
+				toX: isNaN(centerX) ? viewCenter.x : clamp(centerX, minToX, maxToX),
 				fromY: viewCenter.y,
-				toY: isNaN(centerY) ? viewCenter.y : centerY,
+				toY: isNaN(centerY) ? viewCenter.y : clamp(centerY, minToY, maxToY),
 				fromScale: this.scale,
-				toScale: isNaN(scale) ? this.scale : scale,
+				toScale: toScale,
 				expoScaleEase: new ExpoScaleEase(this.scale, scale),
 				expoMoveEase: new ExpoScaleEase(scale, this.scale)
 			};
