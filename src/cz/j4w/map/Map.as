@@ -107,12 +107,12 @@ package cz.j4w.map
 		
 		override protected function initialize():void 
 		{
-			super.initialize();
-			
 			var maskQuad:Quad = new Quad(1, 1);
 			addChild(maskQuad);
 			mask = maskQuad;
 			
+			super.initialize();
+
 			_touchSheet.addEventListener(Event.CHANGE, function():void
 			{
 				update();
@@ -151,12 +151,19 @@ package cz.j4w.map
 				return;
 			}
 			
-			mask.x = 0;
-			mask.y = 0;
-			mask.width = actualWidth;
-			mask.height = actualHeight;
-			
-			mask.getBounds(_touchSheet, _touchSheet.viewPort);
+			if (mask)
+			{
+				mask.x = 0;
+				mask.y = 0;
+				mask.width = actualWidth;
+				mask.height = actualHeight;
+				
+				mask.getBounds(_touchSheet, _touchSheet.viewPort);
+			}
+			else
+			{
+				trace("NO MASK");
+			}
 			_touchSheet.invalidateBounds();
 			
 			updateZoomAndScale();
