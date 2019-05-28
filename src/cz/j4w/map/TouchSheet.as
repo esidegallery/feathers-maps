@@ -488,6 +488,7 @@ package cz.j4w.map
 			}
 			
 			cancelTweens();
+			endTouch();
 			
 			setCenterXY(_viewPort.x + _viewPort.width / 2, _viewPort.y + _viewPort.height / 2);
 			var viewCenter:Point = getViewCenter();
