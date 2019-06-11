@@ -645,7 +645,7 @@ package cz.j4w.map
 			}
 		}
 		
-		protected function cancelTweens():void
+		public function cancelTweens():void
 		{
 			if (scaleTweenID)
 			{
