@@ -21,6 +21,8 @@ package cz.j4w.map
 	import starling.events.Touch;
 	import starling.events.TouchEvent;
 	import starling.events.TouchPhase;
+	import starling.extensions.starlingCallLater.callLater;
+	import starling.extensions.starlingCallLater.clearCallLater;
 	import starling.utils.Pool;
 	
 	public class Map extends FeathersControl 
@@ -477,6 +479,7 @@ package cz.j4w.map
 		
 		override public function dispose():void
 		{
+			clearCallLater(dispatchEventWith);
 			mapTilesBuffer.dispose();
 			Starling.current.nativeStage.removeEventListener(MouseEvent.MOUSE_WHEEL, onNativeStageMouseWheel);
 			
@@ -552,7 +555,7 @@ package cz.j4w.map
 			}
 			if (Math.abs(_touchSheet.velocity.length) < TouchSheet.MINIMUM_VELOCITY && pixelsToInches(dragDistance) < MIN_DRAG_DISTANCE)
 			{
-				dispatchEventWith(MapEventType.MARKER_TRIGGERED, false, marker);
+				callLater(dispatchEventWith, [MapEventType.MARKER_TRIGGERED, false, marker]);
 			}
 		}
 		
