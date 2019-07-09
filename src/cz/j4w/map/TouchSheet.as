@@ -499,27 +499,27 @@ package cz.j4w.map
 			var projectedViewPortWidth:Number = _viewPort.width / scaleDiff;
 			var projectedViewPortHeight:Number = _viewPort.height / scaleDiff;
 			
-			if (movementBounds)
+			if (_movementBounds)
 			{
-				if (projectedViewPortWidth > movementBounds.width)
+				if (projectedViewPortWidth > _movementBounds.width)
 				{
-					var minToX:Number = movementBounds.left + movementBounds.width / 2;
+					var minToX:Number = _movementBounds.left + _movementBounds.width / 2;
 					var maxToX:Number = minToX;
 				}
 				else
 				{
-					minToX = movementBounds.left + projectedViewPortWidth / 2;
-					maxToX = movementBounds.right - projectedViewPortWidth / 2;
+					minToX = _movementBounds.left + projectedViewPortWidth / 2;
+					maxToX = _movementBounds.right - projectedViewPortWidth / 2;
 				}
-				if (projectedViewPortHeight > movementBounds.height)
+				if (projectedViewPortHeight > _movementBounds.height)
 				{
-					var minToY:Number = movementBounds.top + movementBounds.height / 2;
+					var minToY:Number = _movementBounds.top + _movementBounds.height / 2;
 					var maxToY:Number = minToY;
 				}
 				else
 				{
-					minToY = movementBounds.top + projectedViewPortHeight / 2;
-					maxToY = movementBounds.bottom - projectedViewPortHeight / 2;
+					minToY = _movementBounds.top + projectedViewPortHeight / 2;
+					maxToY = _movementBounds.bottom - projectedViewPortHeight / 2;
 				}
 			}
 			else
@@ -669,32 +669,32 @@ package cz.j4w.map
 		{
 			var gravity:Point = outPoint || new Point;
 			
-			if (movementBounds && viewPort) 
+			if (_movementBounds && viewPort) 
 			{
-				if (viewPort.width > movementBounds.width) 
+				if (viewPort.width > _movementBounds.width) 
 				{
-					gravity.x = ((viewPort.left - movementBounds.left) + (viewPort.width - movementBounds.width) / 2) * scale;
+					gravity.x = ((viewPort.left - _movementBounds.left) + (viewPort.width - _movementBounds.width) / 2) * scale;
 				} 
-				else if (viewPort.left < movementBounds.left) 
+				else if (viewPort.left < _movementBounds.left) 
 				{
-					gravity.x = (viewPort.left - movementBounds.left) * scale;
+					gravity.x = (viewPort.left - _movementBounds.left) * scale;
 				} 
-				else if (viewPort.right > movementBounds.right) 
+				else if (viewPort.right > _movementBounds.right) 
 				{
-					gravity.x = (viewPort.right - movementBounds.right) * scale;
+					gravity.x = (viewPort.right - _movementBounds.right) * scale;
 				}
 				
-				if (viewPort.height > movementBounds.height) 
+				if (viewPort.height > _movementBounds.height) 
 				{
-					gravity.y = ((viewPort.top - movementBounds.top) + (viewPort.height - movementBounds.height) / 2) * scale;
+					gravity.y = ((viewPort.top - _movementBounds.top) + (viewPort.height - _movementBounds.height) / 2) * scale;
 				} 
-				else if (viewPort.top < movementBounds.top) 
+				else if (viewPort.top < _movementBounds.top) 
 				{
-					gravity.y = (viewPort.top - movementBounds.top) * scale;
+					gravity.y = (viewPort.top - _movementBounds.top) * scale;
 				} 
-				else if (viewPort.bottom > movementBounds.bottom) 
+				else if (viewPort.bottom > _movementBounds.bottom) 
 				{
-					gravity.y = (viewPort.bottom - movementBounds.bottom) * scale;
+					gravity.y = (viewPort.bottom - _movementBounds.bottom) * scale;
 				}
 			}
 			

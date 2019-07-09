@@ -294,6 +294,11 @@ package cz.j4w.map
 			return markers[id] as MapMarker;
 		}
 		
+		public function hasMarker(id:String):Boolean
+		{
+			return markers[id];
+		}
+		
 		public function getAllMarkers():Vector.<MapMarker>
 		{
 			var allMarkers:Vector.<MapMarker> = new Vector.<MapMarker>;
