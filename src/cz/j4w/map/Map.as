@@ -267,10 +267,13 @@ package cz.j4w.map
 		
 		public function addMarker(id:String, x:Number, y:Number, displayObject:DisplayObject, data:Object = null, scaleWithMap:Boolean = false):MapMarker
 		{
-			if (!displayObject)
+			if (!id || !displayObject)
 			{
 				return null;
 			}
+			
+			// Can't have markers with the same ID: 
+			removeMarker(id, true);
 			
 			var newMarker:MapMarker = new MapMarker(id, displayObject, data, scaleWithMap);
 			markers[id] = newMarker;
@@ -564,7 +567,7 @@ package cz.j4w.map
 			}
 		}
 		
-		private function onNativeStageMouseWheel(event:MouseEvent):void 
+		protected function onNativeStageMouseWheel(event:MouseEvent):void 
 		{
 			if (isCreated && isEnabled && _touchSheet && !_touchSheet.disableZooming)
 			{

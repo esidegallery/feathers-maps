@@ -112,6 +112,22 @@ package cz.j4w.map
 			snapToBoundsPending = true;
 		}
 		
+		public function getScaledMovementBounds(outRect:Rectangle = null):Rectangle
+		{
+			outRect ||= new Rectangle;
+			
+			if (_movementBounds)
+			{
+				outRect.setTo(_movementBounds.x * scale, _movementBounds.y * scale, _movementBounds.width * scale, _movementBounds.height * scale);
+			}
+			else
+			{
+				outRect.setTo(NaN, NaN, NaN, NaN);
+			}
+			
+			return outRect;
+		}
+		
 		private var _viewPort:Rectangle;
 		public function get viewPort():Rectangle
 		{
@@ -231,6 +247,7 @@ package cz.j4w.map
 			}
 			if (touchAID != -1) // we checeked touch b first because a might be replaced by b
 			{
+				var t:Touch;
 				if (event.getTouch(this, TouchPhase.ENDED, touchAID))
 				{
 					touchAID = touchBID;
