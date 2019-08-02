@@ -87,6 +87,39 @@ package cz.j4w.map
 		 */
 		public var layerFactoryClass:Class = MapLayer;
 		
+		protected static function markerCompareFunction(marker1:MapMarker, marker2:MapMarker):Number
+		{
+			if (marker1.alwaysOnTop && !marker2.alwaysOnTop)
+			{
+				return 1;
+			}
+			if (!marker1.alwaysOnTop && marker2.alwaysOnTop)
+			{
+				return -1;
+			}
+			
+			if (marker1.scaleWithMap)
+			{
+				if (marker2.scaleWithMap) // Compare y's:
+				{
+					return marker1.displayObject.y - marker2.displayObject.y;
+				}
+				else // marker 2 will be higher: 
+				{
+					return -1;
+				}
+			}
+			
+			if (marker2.scaleWithMap)
+			{
+				return 1;
+			}
+			else
+			{
+				return marker1.displayObject.y - marker2.displayObject.y;
+			}
+		}
+		
 		public function Map(mapOptions:MapOptions)
 		{
 			this.mapOptions = mapOptions;
@@ -347,39 +380,6 @@ package cz.j4w.map
 			for (var i:int = 0, l:int = markers.length; i < l; i++)
 			{
 				markersContainer.addChildAt(markers[i].displayObject, i);
-			}
-		}
-		
-		protected function markerCompareFunction(marker1:MapMarker, marker2:MapMarker):Number
-		{
-			if (marker1.alwaysOnTop && !marker2.alwaysOnTop)
-			{
-				return 1;
-			}
-			if (!marker1.alwaysOnTop && marker2.alwaysOnTop)
-			{
-				return -1;
-			}
-			
-			if (marker1.scaleWithMap)
-			{
-				if (marker2.scaleWithMap) // Compare y's:
-				{
-					return marker1.displayObject.y - marker2.displayObject.y;
-				}
-				else // marker 2 will be higher: 
-				{
-					return -1;
-				}
-			}
-			
-			if (marker2.scaleWithMap)
-			{
-				return 1;
-			}
-			else
-			{
-				return marker1.displayObject.y - marker2.displayObject.y;
 			}
 		}
 		
