@@ -82,7 +82,7 @@ package cz.j4w.map
 		}
 		
 		/** 
-		 * Defaults to <code>MapLayer</code>. The class contructor needs to have the following signature:<br>
+		 * Defaults to <code>MapLayer</code>. The class contructor needs to have the following signature:<br/>
 		 * <code>MapLayer(map:Map, id:String, options:MapLayerOptions, buffer:MapTilesBuffer)</code> 
 		 */
 		public var layerFactoryClass:Class = MapLayer;
