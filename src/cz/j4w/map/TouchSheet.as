@@ -374,7 +374,7 @@ package cz.j4w.map
 				
 				touchA = event.getTouch(this, null, touchAID);
 				
-				if (!disableMovement)
+				if (touchA && !disableMovement)
 				{
 					// one finger touching -> move
 					var delta:Point = touchA.getMovement(stage, Pool.getPoint());
@@ -396,6 +396,10 @@ package cz.j4w.map
 						dispatchEventWith(MOVE);
 					}
 					Pool.putPoint(delta);
+				}
+				else
+				{
+					endTouch();
 				}
 			}
 			else
