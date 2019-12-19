@@ -2,12 +2,12 @@ package cz.j4w.map
 {
 	import com.greensock.easing.ExpoScaleEase;
 	import com.greensock.easing.Power1;
-	
+
+	import feathers.utils.math.clamp;
+
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
-	
-	import feathers.utils.math.clamp;
-	
+
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
 	import starling.display.Sprite;
@@ -80,7 +80,7 @@ package cz.j4w.map
 			_touchElasticity = value;
 		}
 		
-		private var _nonTouchElasticity:Number = 0.85;
+		private var _nonTouchElasticity:Number = 0.75;
 		public function get nonTouchElasticity():Number
 		{
 			return _nonTouchElasticity;
@@ -90,7 +90,7 @@ package cz.j4w.map
 			_nonTouchElasticity = MathUtil.clamp(value, 0, 1);
 		}
 		
-		private var _decelerationRatio:Number = 0.95;
+		private var _decelerationRatio:Number = 0.85;
 		public function get decelerationRatio():Number
 		{
 			return _decelerationRatio;
