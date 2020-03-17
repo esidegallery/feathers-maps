@@ -1,18 +1,18 @@
 package cz.j4w.map 
 {
+	import cz.j4w.map.events.MapEventType;
+
+	import feathers.core.FeathersControl;
+	import feathers.utils.math.clamp;
+	import feathers.utils.pixelsToInches;
+	import feathers.utils.textures.TextureCache;
+	import feathers.utils.touch.TapToEvent;
+
 	import flash.events.MouseEvent;
 	import flash.geom.Point;
 	import flash.geom.Rectangle;
 	import flash.utils.Dictionary;
-	
-	import cz.j4w.map.events.MapEventType;
-	
-	import feathers.core.FeathersControl;
-	import feathers.utils.pixelsToInches;
-	import feathers.utils.math.clamp;
-	import feathers.utils.textures.TextureCache;
-	import feathers.utils.touch.TapToEventExtended;
-	
+
 	import starling.core.Starling;
 	import starling.display.DisplayObject;
 	import starling.display.Quad;
@@ -315,7 +315,7 @@ package cz.j4w.map
 			displayObject.x = x;
 			displayObject.y = y;
 			
-			new TapToEventExtended(displayObject, MapEventType.MARKER_TRIGGERED);
+			new TapToEvent(displayObject, MapEventType.MARKER_TRIGGERED);
 			displayObject.addEventListener(MapEventType.MARKER_TRIGGERED, markerTriggeredHandler);
 			
 			markersContainer.addChild(displayObject);
