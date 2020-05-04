@@ -1,7 +1,7 @@
 package cz.j4w.map 
 {
 	import feathers.controls.ImageLoader;
-	
+
 	import starling.core.Starling;
 	import starling.events.Event;
 	

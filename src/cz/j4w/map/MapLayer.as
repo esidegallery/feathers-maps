@@ -1,10 +1,10 @@
 package cz.j4w.map
 {
+	import feathers.utils.textures.TextureCache;
+
 	import flash.geom.Rectangle;
 	import flash.utils.Dictionary;
-	
-	import feathers.utils.textures.TextureCache;
-	
+
 	import starling.display.BlendMode;
 	import starling.display.Sprite;
 	

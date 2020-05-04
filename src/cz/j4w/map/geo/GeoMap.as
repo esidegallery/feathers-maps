@@ -1,13 +1,13 @@
 package cz.j4w.map.geo {
 	
-	import flash.geom.Point;
-	import flash.geom.Rectangle;
-	
 	import cz.j4w.map.Map;
 	import cz.j4w.map.MapCircleOverlay;
 	import cz.j4w.map.MapMarker;
 	import cz.j4w.map.MapOptions;
-	
+
+	import flash.geom.Point;
+	import flash.geom.Rectangle;
+
 	import starling.display.DisplayObject;
 	
 	/**
