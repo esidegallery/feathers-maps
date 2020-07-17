@@ -6,10 +6,10 @@ package cz.j4w.map
 	 */
 	public class MapLayerOptions 
 	{
+		public var index:int = -1;
+		public var blendMode:String;
 		public var loadInitialTilesInstantly:Boolean;
 		public var prioritiseTileLoading:Boolean;
-		public var blendMode:String;
-		public var index:int = -1;
 		public var maximumZoom:int;
 		/** If >= 0, only tiles up to this zoom level will be shown, and kept visible beyond it. */
 		public var limitZoom:int = -1;

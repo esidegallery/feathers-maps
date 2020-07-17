@@ -86,6 +86,11 @@ package cz.j4w.map
 		 * <code>MapLayer(map:Map, id:String, options:MapLayerOptions, buffer:MapTilesBuffer)</code> 
 		 */
 		public var layerFactoryClass:Class = MapLayer;
+		/** 
+		 * Defaults to <code>MapVideoLayer</code>. The class contructor needs to have the following signature:<br/>
+		 * <code>MapLayer(map:Map, id:String, options:MapVideoLayerOptions)</code> 
+		 */
+		public var videoLayerFactoryClass:Class = MapVideoLayer;
 		
 		protected static function markerCompareFunction(marker1:MapMarker, marker2:MapMarker):Number
 		{
@@ -204,7 +209,11 @@ package cz.j4w.map
 				updateMarkersAndCircles();
 				for (var id:String in layers) 
 				{
-					getLayer(id).update();
+					var layer:MapLayer = getLayer(id) as MapLayer;
+					if (layer !== null)
+					{
+						layer.update();
+					}
 				}
 			}
 		}
@@ -214,7 +223,11 @@ package cz.j4w.map
 			update();
 			for (var id:String in layers) 
 			{
-				getLayer(id).loadAllTilesNow();
+				var layer:MapLayer = getLayer(id) as MapLayer;
+				if (layer !== null)
+				{
+					layer.loadAllTilesNow();
+				}
 			}
 		}
 		
@@ -240,18 +253,16 @@ package cz.j4w.map
 			}
 		}
 		
-		public function addLayer(id:String, options:MapLayerOptions = null):MapLayer 
+		public function addLayer(id:String, options:MapLayerOptions = null):DisplayObject 
 		{
 			var layer:MapLayer = layers[id] as MapLayer;
 			
-			if (!layer)
+			if (layer === null && options !== null)
 			{
-				options ||= new MapLayerOptions;
-				
 				var childIndex:uint = options.index >= 0 ? Math.min(options.index, mapContainer.numChildren) : mapContainer.numChildren;
 				
 				layer = new layerFactoryClass(this, id, options, mapTilesBuffer) as MapLayer;
-				if (!layer)
+				if (layer === null)
 				{
 					throw new Error("layerFactoryClass is invalid");
 				}
@@ -267,10 +278,35 @@ package cz.j4w.map
 			
 			return layer;
 		}
-		
-		public function removeLayer(id:String):MapLayer
+
+		public function addVideoLayer(id:String, options:MapVideoLayerOptions):DisplayObject
 		{
-			var layer:MapLayer = layers[id] as MapLayer;
+			var layer:MapVideoLayer = layers[id] as MapVideoLayer;
+
+			if (layer === null && options !== null)
+			{
+				var childIndex:uint = options.index >= 0 ? Math.min(options.index, mapContainer.numChildren) : mapContainer.numChildren;
+
+				layer = new videoLayerFactoryClass(this, id, options) as MapVideoLayer;
+				if (layer === null)
+				{
+					throw new Error("videoLayerFactoryClass is invalid");
+				}
+				
+				mapContainer.addChildAt(layer, childIndex);			
+				mapContainer.addChild(circlesContainer); // Circles above layers.
+				mapContainer.addChild(markersContainer); // Markers above circles.
+				
+				layers[id] = layer;
+				invalidate(INVALIDATION_FLAG_LAYOUT);
+			}
+
+			return layer;
+		}
+		
+		public function removeLayer(id:String):DisplayObject
+		{
+			var layer:DisplayObject = layers[id] as DisplayObject;
 			if (layer) 
 			{
 				layer.removeFromParent(true);
@@ -290,12 +326,12 @@ package cz.j4w.map
 		
 		public function hasLayer(id:String):Boolean
 		{
-			return layers[id];
+			return layers[id] !== null;
 		}
 		
-		public function getLayer(id:String):MapLayer
+		public function getLayer(id:String):DisplayObject
 		{
-			return layers[id];
+			return layers[id] as DisplayObject;
 		}
 		
 		public function addMarker(id:String, x:Number, y:Number, displayObject:DisplayObject, data:Object = null, scaleWithMap:Boolean = false):MapMarker
