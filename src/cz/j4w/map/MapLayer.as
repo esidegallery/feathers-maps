@@ -89,9 +89,9 @@ package cz.j4w.map
 			}
 		}
 		
-		public function loadAllTilesNow():void
-		{
-		}
+		// public function loadAllTilesNow():void
+		// {
+		// }
 		
 		/**
 		 * Check tiles visibility and removes those not visible.

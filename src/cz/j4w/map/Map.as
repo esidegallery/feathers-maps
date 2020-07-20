@@ -218,18 +218,18 @@ package cz.j4w.map
 			}
 		}
 		
-		public function loadAllNow():void
-		{
-			update();
-			for (var id:String in layers) 
-			{
-				var layer:MapLayer = getLayer(id) as MapLayer;
-				if (layer !== null)
-				{
-					layer.loadAllTilesNow();
-				}
-			}
-		}
+		// public function loadAllNow():void
+		// {
+		// 	update();
+		// 	for (var id:String in layers) 
+		// 	{
+		// 		var layer:MapLayer = getLayer(id) as MapLayer;
+		// 		if (layer !== null)
+		// 		{
+		// 			layer.loadAllTilesNow();
+		// 		}
+		// 	}
+		// }
 		
 		protected function updateMarkersAndCircles():void 
 		{
