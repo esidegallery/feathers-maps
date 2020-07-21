@@ -734,7 +734,6 @@ package cz.j4w.map
 				return;
 			}
 			
-			
 			if (!_isTouching) 
 			{
 				previousX = x;
@@ -764,7 +763,6 @@ package cz.j4w.map
 					x += gravity.x;
 					y += gravity.y;
 				}
-				
 				
 				Pool.putPoint(gravity);
 				

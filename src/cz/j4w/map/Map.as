@@ -198,7 +198,10 @@ package cz.j4w.map
 				mask.width = actualWidth;
 				mask.height = actualHeight;
 				
-				mask.getBounds(_touchSheet, _touchSheet.viewPort);
+				if (_touchSheet.width > 0 && _touchSheet.height > 0)
+				{
+					mask.getBounds(_touchSheet, _touchSheet.viewPort);
+				}
 			}
 			_touchSheet.invalidateBounds();
 			
@@ -217,19 +220,6 @@ package cz.j4w.map
 				}
 			}
 		}
-		
-		// public function loadAllNow():void
-		// {
-		// 	update();
-		// 	for (var id:String in layers) 
-		// 	{
-		// 		var layer:MapLayer = getLayer(id) as MapLayer;
-		// 		if (layer !== null)
-		// 		{
-		// 			layer.loadAllTilesNow();
-		// 		}
-		// 	}
-		// }
 		
 		protected function updateMarkersAndCircles():void 
 		{
