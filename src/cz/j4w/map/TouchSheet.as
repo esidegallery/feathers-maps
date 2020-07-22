@@ -503,7 +503,7 @@ package cz.j4w.map
 		 */
 		public function tweenTo(centerX:Number = NaN, centerY:Number = NaN, scale:Number = NaN, duration:Number = 1, transition:String = "easeInOut"):void
 		{
-			if (!_viewPort)
+			if (_viewPort === null || viewPort.width == 0 || viewPort.height == 0)
 			{
 				return;
 			}
