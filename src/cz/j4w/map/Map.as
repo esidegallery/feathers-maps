@@ -87,8 +87,13 @@ package cz.j4w.map
 		 */
 		public var layerFactoryClass:Class = MapLayer;
 		/** 
+		 * Defaults to <code>MapImageLayer</code>. The class contructor needs to have the following signature:<br/>
+		 * <code>MapImageLayer(map:Map, id:String, options:MapImageLayerOptions)</code> 
+		 */
+		public var imageLayerFactoryClass:Class = MapImageLayer;
+		/** 
 		 * Defaults to <code>MapVideoLayer</code>. The class contructor needs to have the following signature:<br/>
-		 * <code>MapLayer(map:Map, id:String, options:MapVideoLayerOptions)</code> 
+		 * <code>MapVideoLayer(map:Map, id:String, options:MapVideoLayerOptions)</code> 
 		 */
 		public var videoLayerFactoryClass:Class = MapVideoLayer;
 		
@@ -266,6 +271,31 @@ package cz.j4w.map
 				invalidate(INVALIDATION_FLAG_LAYOUT);
 			}
 			
+			return layer;
+		}
+
+		public function addImageLayer(id:String, options:MapImageLayerOptions):DisplayObject
+		{
+			var layer:MapImageLayer = layers[id] as MapImageLayer;
+
+			if (layer === null && options !== null)
+			{
+				var childIndex:uint = options.index >= 0 ? Math.min(options.index, mapContainer.numChildren) : mapContainer.numChildren;
+
+				layer = new imageLayerFactoryClass(this, id, options) as MapImageLayer;
+				if (layer === null)
+				{
+					throw new Error("imageLayerFactoryClass is invalid");
+				}
+				
+				mapContainer.addChildAt(layer, childIndex);			
+				mapContainer.addChild(circlesContainer); // Circles above layers.
+				mapContainer.addChild(markersContainer); // Markers above circles.
+				
+				layers[id] = layer;
+				invalidate(INVALIDATION_FLAG_LAYOUT);
+			}
+
 			return layer;
 		}
 
