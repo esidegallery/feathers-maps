@@ -12,7 +12,7 @@ package cz.j4w.map
 	 * ...
 	 * @author Jakub Wagner, J4W
 	 */
-	public class MapLayer extends Sprite 
+	public class MapLayer extends Sprite implements IUpdatableMapLayer
 	{
 		protected var _options:MapLayerOptions;
 		public function get options():MapLayerOptions 

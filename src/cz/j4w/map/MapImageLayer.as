@@ -1,8 +1,8 @@
 package cz.j4w.map
 {
-	import starling.display.Image;
-	import starling.display.Sprite;
 	import feathers.controls.ImageLoader;
+
+	import starling.display.Sprite;
 
 	public class MapImageLayer extends Sprite
 	{
@@ -22,6 +22,11 @@ package cz.j4w.map
 			_id = id;
 			_options = options || new MapImageLayerOptions;
 
+			initialize();
+		}
+
+		protected function initialize():void
+		{
 			_imageLoader = new ImageLoader;
 			_imageLoader.scaleContent = false;
 			_imageLoader.source = _options.imageSource;

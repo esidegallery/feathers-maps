@@ -217,7 +217,7 @@ package cz.j4w.map
 				updateMarkersAndCircles();
 				for (var id:String in layers) 
 				{
-					var layer:MapLayer = getLayer(id) as MapLayer;
+					var layer:IUpdatableMapLayer = getLayer(id) as IUpdatableMapLayer;
 					if (layer !== null)
 					{
 						layer.update();
