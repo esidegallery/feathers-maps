@@ -67,20 +67,6 @@ package cz.j4w.map
 		
 		public var textureCache:TextureCache;
 		
-		private var _suspendElementUpdate:Boolean = false;
-		public function get suspendElementUpdate():Boolean
-		{
-			return _suspendElementUpdate;
-		}
-		public function set suspendElementUpdate(value:Boolean):void
-		{
-			_suspendElementUpdate = value;
-			if (!_suspendElementUpdate)
-			{
-				update();
-			}
-		}
-		
 		/** 
 		 * Defaults to <code>MapLayer</code>. The class contructor needs to have the following signature:<br/>
 		 * <code>MapLayer(map:Map, id:String, options:MapLayerOptions, buffer:MapTilesBuffer)</code> 
@@ -212,16 +198,13 @@ package cz.j4w.map
 			
 			updateZoomAndScale();
 			
-			if (!_suspendElementUpdate)
+			updateMarkersAndCircles();
+			for (var id:String in layers) 
 			{
-				updateMarkersAndCircles();
-				for (var id:String in layers) 
+				var layer:IUpdatableMapLayer = getLayer(id) as IUpdatableMapLayer;
+				if (layer !== null && !layer.suspendUpdates)
 				{
-					var layer:IUpdatableMapLayer = getLayer(id) as IUpdatableMapLayer;
-					if (layer !== null)
-					{
-						layer.update();
-					}
+					layer.update();
 				}
 			}
 		}

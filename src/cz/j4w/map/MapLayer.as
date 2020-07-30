@@ -37,6 +37,16 @@ package cz.j4w.map
 		public var textureCache:TextureCache;
 		
 		public var debugTrace:Boolean = false;
+
+		protected var _suspendUpdates:Boolean;
+		public function get suspendUpdates():Boolean
+		{
+			return _suspendUpdates;
+		}
+		public function set suspendUpdates(value:Boolean):void
+		{
+			_suspendUpdates = value;
+		}
 		
 		public function MapLayer(map:Map, id:String, options:MapLayerOptions, buffer:MapTilesBuffer)
 		{
@@ -88,10 +98,6 @@ package cz.j4w.map
 				trace("Created", tilesCreated, "tiles.")
 			}
 		}
-		
-		// public function loadAllTilesNow():void
-		// {
-		// }
 		
 		/**
 		 * Check tiles visibility and removes those not visible.
