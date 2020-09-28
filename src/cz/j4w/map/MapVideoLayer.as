@@ -29,7 +29,14 @@ package cz.j4w.map
 			_id = id;
 			_options = options || new MapVideoLayerOptions;
 
-			_videoPlayer = new VideoPlayer;
+			if (options.videoPlayerFactory != null)
+			{
+				_videoPlayer = new options.videoPlayerFactory as VideoPlayer;
+			}
+			else
+			{
+				_videoPlayer = new VideoPlayer;
+			}
 			_videoPlayer.soundTransform = new SoundTransform(_options.volume);
 			_videoPlayer.autoPlay = true;
 			_videoPlayer.videoSource = _options.videoSource;
