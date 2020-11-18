@@ -74,7 +74,7 @@ package cz.j4w.map
 
 		protected function disposeRenderTexture():void
 		{
-			if (_renderTexture === null)
+			if (_renderTexture == null)
 			{
 				return;
 			}
