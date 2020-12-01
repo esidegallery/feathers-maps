@@ -124,19 +124,6 @@ package cz.j4w.map
 			snapToBoundsPending = true;
 		}
 		
-		/**
-		 * @return Movement bounds scaled to the touchSheet's container 
-		 *         or <code>null</code> if no movement bounds are set.
-		 */
-		public function getScaledMovementBounds():Rectangle
-		{
-			if (_movementBounds)
-			{
-				return new Rectangle(_movementBounds.x * scale, _movementBounds.y * scale, _movementBounds.width * scale, _movementBounds.height * scale);
-			}
-			return null;
-		}
-		
 		/** Set this when the viewport size changes or when TouchSheet dispatches Event.CHANGE so that movementBounds can be applied. */ 
 		public function setViewportTo(xa:Number, ya:Number, widtha:Number, heighta:Number):void
 		{
