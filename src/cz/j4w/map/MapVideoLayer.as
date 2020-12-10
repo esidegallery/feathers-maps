@@ -1,10 +1,10 @@
 package cz.j4w.map
 {
+	import feathers.controls.VideoTextureImageLoader;
 	import feathers.media.VideoPlayer;
 
 	import flash.media.SoundTransform;
 
-	import starling.display.Image;
 	import starling.display.Sprite;
 	import starling.events.Event;
 	import starling.textures.RenderTexture;
@@ -20,7 +20,7 @@ package cz.j4w.map
 		protected var _map:Map;
 		protected var _id:String;
 		protected var _videoPlayer:VideoPlayer;
-		protected var _videoDisplay:Image;
+		protected var _videoDisplay:VideoTextureImageLoader;
 		protected var _renderTexture:RenderTexture;
 
 		public function MapVideoLayer(map:Map, id:String, options:MapVideoLayerOptions)
@@ -41,7 +41,8 @@ package cz.j4w.map
 			_videoPlayer.autoPlay = true;
 			_videoPlayer.videoSource = _options.videoSource;
 			
-			_videoDisplay = new Image(null);
+			_videoDisplay = new VideoTextureImageLoader;
+			_videoDisplay.scaleContent = false;
 			_videoPlayer.addChild(_videoDisplay);
 
 			_videoPlayer.addEventListener(Event.READY, videoPlayer_readyHandler);
@@ -52,22 +53,19 @@ package cz.j4w.map
 
 		protected function videoPlayer_readyHandler(event:Event):void
 		{
-			_videoDisplay.texture = _videoPlayer.texture;
-			_videoDisplay.readjustSize();
+			_videoDisplay.source = _videoPlayer.texture;
+			_videoDisplay.videoDisplayWidth = _options.videoDisplayWidth;
+			_videoDisplay.videoDisplayHeight = _options.videoDisplayHeight;
+			_videoDisplay.videoCodedHeight = _options.videoCodedHeight;
 			disposeRenderTexture();
-			_renderTexture = new RenderTexture(_videoDisplay.width, _videoDisplay.height);
 		}
 
 		protected function videoPlayer_completeHandler(event:Event):void
 		{
+			_renderTexture = new RenderTexture(_videoDisplay.width, _videoDisplay.height);
 			_renderTexture.clear();
 			_renderTexture.draw(_videoDisplay);
-			replayVideo();
-		}
-
-		protected function replayVideo():void
-		{
-			_videoDisplay.texture = _renderTexture;
+			_videoDisplay.source = _renderTexture;
 			_videoPlayer.videoSource = null;
 			_videoPlayer.videoSource = options.videoSource;
 		}
@@ -79,6 +77,7 @@ package cz.j4w.map
 				return;
 			}
 			_renderTexture.dispose();
+			_renderTexture = null;
 		}
 
 		override public function dispose():void
