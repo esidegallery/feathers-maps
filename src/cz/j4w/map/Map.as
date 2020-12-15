@@ -339,7 +339,7 @@ package cz.j4w.map
 		
 		public function addMarker(id:String, x:Number, y:Number, displayObject:DisplayObject, data:Object = null, scaleWithMap:Boolean = false):MapMarker
 		{
-			if (!id || !displayObject)
+			if (!id || displayObject == null)
 			{
 				return null;
 			}
