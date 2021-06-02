@@ -23,6 +23,28 @@ package cz.j4w.map
 		protected var _videoDisplay:VideoTextureImageLoader;
 		protected var _renderTexture:RenderTexture;
 
+		protected var _paused:Boolean;
+		public function get paused():Boolean
+		{
+			return _paused;
+		}
+		public function set paused(value:Boolean):void
+		{
+			_paused = value;
+			if (_videoPlayer == null)
+			{
+				return;
+			}
+			if (_paused && _videoPlayer.isPlaying)
+			{
+				_videoPlayer.pause();
+			}
+			else if (!_paused && !_videoPlayer.isPlaying)
+			{
+				_videoPlayer.play();
+			}
+		}
+
 		public function MapVideoLayer(map:Map, id:String, options:MapVideoLayerOptions)
 		{
 			_map = map;
@@ -53,6 +75,10 @@ package cz.j4w.map
 
 		protected function videoPlayer_readyHandler(event:Event):void
 		{
+			if (_paused)
+			{
+				_videoPlayer.pause();
+			}
 			_videoDisplay.source = _videoPlayer.texture;
 			_videoDisplay.videoDisplayWidth = _options.videoDisplayWidth;
 			_videoDisplay.videoDisplayHeight = _options.videoDisplayHeight;
