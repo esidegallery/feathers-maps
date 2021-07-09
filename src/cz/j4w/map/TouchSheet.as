@@ -362,7 +362,7 @@ package cz.j4w.map
 				{
 					// one finger touching -> move
 					var delta:Point = touchA.getMovement(stage, Pool.getPoint());
-					if(delta.length !== 0)
+					if (delta.length !== 0)
 					{
 						shadowX += delta.x;
 						shadowY += delta.y;

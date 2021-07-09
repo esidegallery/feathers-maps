@@ -50,7 +50,7 @@ package cz.j4w.map
 		
 		public function get viewPort():Rectangle 
 		{
-			return touchSheet.viewPort;
+			return _touchSheet.viewPort;
 		}
 		
 		private var _zoom:int;
@@ -155,6 +155,11 @@ package cz.j4w.map
 		
 		override protected function draw():void 
 		{
+			if (isInvalid(INVALIDATION_FLAG_LAYOUT) || isInvalid(INVALIDATION_FLAG_SIZE))
+			{
+				_touchSheet.invalidateBounds();
+			}
+
 			super.draw();
 			
 			if (!isCreated)
@@ -167,11 +172,6 @@ package cz.j4w.map
 				{
 					_touchSheet.setCenter(mapOptions.initialCenter);
 				}
-			}
-			
-			if (isInvalid(INVALIDATION_FLAG_LAYOUT) || isInvalid(INVALIDATION_FLAG_SIZE))
-			{
-				update();
 			}
 		}
 		
@@ -197,12 +197,11 @@ package cz.j4w.map
 			_touchSheet.invalidateBounds();
 			
 			updateZoomAndScale();
-			
 			updateMarkersAndCircles();
 			for (var id:String in layers) 
 			{
 				var layer:IUpdatableMapLayer = getLayer(id) as IUpdatableMapLayer;
-				if (layer !== null && !layer.suspendUpdates)
+				if (layer != null && !layer.suspendUpdates)
 				{
 					layer.update();
 				}
@@ -235,12 +234,12 @@ package cz.j4w.map
 		{
 			var layer:MapLayer = layers[id] as MapLayer;
 			
-			if (layer === null && options !== null)
+			if (layer == null && options != null)
 			{
 				var childIndex:uint = options.index >= 0 ? Math.min(options.index, mapContainer.numChildren) : mapContainer.numChildren;
 				
 				layer = new layerFactoryClass(this, id, options, mapTilesBuffer) as MapLayer;
-				if (layer === null)
+				if (layer == null)
 				{
 					throw new Error("layerFactoryClass is invalid");
 				}
@@ -261,12 +260,12 @@ package cz.j4w.map
 		{
 			var layer:MapImageLayer = layers[id] as MapImageLayer;
 
-			if (layer === null && options !== null)
+			if (layer == null && options != null)
 			{
 				var childIndex:uint = options.index >= 0 ? Math.min(options.index, mapContainer.numChildren) : mapContainer.numChildren;
 
 				layer = new imageLayerFactoryClass(this, id, options) as MapImageLayer;
-				if (layer === null)
+				if (layer == null)
 				{
 					throw new Error("imageLayerFactoryClass is invalid");
 				}
@@ -286,22 +285,27 @@ package cz.j4w.map
 		{
 			var layer:MapVideoLayer = layers[id] as MapVideoLayer;
 
-			if (layer === null && options !== null)
+			if (layer == null && options != null)
 			{
 				var childIndex:uint = options.index >= 0 ? Math.min(options.index, mapContainer.numChildren) : mapContainer.numChildren;
 
 				layer = new videoLayerFactoryClass(this, id, options) as MapVideoLayer;
-				if (layer === null)
+				if (layer == null)
 				{
 					throw new Error("videoLayerFactoryClass is invalid");
 				}
-				
+
 				mapContainer.addChildAt(layer, childIndex);			
 				mapContainer.addChild(circlesContainer); // Circles above layers.
 				mapContainer.addChild(markersContainer); // Markers above circles.
 				
 				layers[id] = layer;
 				invalidate(INVALIDATION_FLAG_LAYOUT);
+				
+				layer.addEventListener(Event.READY, function():void
+				{
+					invalidate(INVALIDATION_FLAG_LAYOUT);
+				});
 			}
 
 			return layer;
@@ -329,7 +333,7 @@ package cz.j4w.map
 		
 		public function hasLayer(id:String):Boolean
 		{
-			return layers[id] !== null;
+			return layers[id] != null;
 		}
 		
 		public function getLayer(id:String):DisplayObject

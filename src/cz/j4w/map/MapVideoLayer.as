@@ -9,6 +9,9 @@ package cz.j4w.map
 	import starling.events.Event;
 	import starling.textures.RenderTexture;
 
+	/** To be dispatched when the video is ready, so that map can update its viewport. */
+	[Event(name="ready", type="starling.events.Event")]
+
 	public class MapVideoLayer extends Sprite
 	{
 		protected var _options:MapVideoLayerOptions;
@@ -61,16 +64,15 @@ package cz.j4w.map
 			}
 			_videoPlayer.soundTransform = new SoundTransform(_options.volume);
 			_videoPlayer.autoPlay = true;
-			_videoPlayer.videoSource = _options.videoSource;
+			addChild(_videoPlayer);
 			
 			_videoDisplay = new VideoTextureImageLoader;
 			_videoDisplay.scaleContent = false;
-			_videoPlayer.addChild(_videoDisplay);
-
+			addChild(_videoDisplay);
+			
+			_videoPlayer.videoSource = _options.videoSource;
 			_videoPlayer.addEventListener(Event.READY, videoPlayer_readyHandler);
 			_videoPlayer.addEventListener(Event.COMPLETE, videoPlayer_completeHandler);
-
-			addChild(_videoPlayer);
 		}
 
 		protected function videoPlayer_readyHandler(event:Event):void
@@ -83,7 +85,9 @@ package cz.j4w.map
 			_videoDisplay.videoDisplayWidth = _options.videoDisplayWidth;
 			_videoDisplay.videoDisplayHeight = _options.videoDisplayHeight;
 			_videoDisplay.videoCodedHeight = _options.videoCodedHeight;
+			_videoDisplay.validate();
 			disposeRenderTexture();
+			dispatchEventWith(Event.READY);
 		}
 
 		protected function videoPlayer_completeHandler(event:Event):void
