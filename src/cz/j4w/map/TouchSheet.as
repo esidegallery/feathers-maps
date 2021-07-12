@@ -313,14 +313,14 @@ package cz.j4w.map
 				Pool.putPoint(point);
 				Pool.putPoint(gravity);
 				
-				if (!disableRotation && deltaAngle !== 0)
+				if (!disableRotation && deltaAngle != 0)
 				{
 					rotation += deltaAngle;
 					dispatchEventWith(ROTATE);
 				}
 				
 				var sizeDiff:Number = currentVector.length / previousVector.length;
-				if (!disableZooming && sizeDiff !== 1)
+				if (!disableZooming && sizeDiff != 1)
 				{
 					shadowScale *= sizeDiff;
 					if (shadowScale < minimumScale) 
@@ -362,7 +362,7 @@ package cz.j4w.map
 				{
 					// one finger touching -> move
 					var delta:Point = touchA.getMovement(stage, Pool.getPoint());
-					if (delta.length !== 0)
+					if (delta.length != 0)
 					{
 						shadowX += delta.x;
 						shadowY += delta.y;
@@ -487,7 +487,7 @@ package cz.j4w.map
 		 */
 		public function tweenTo(centerX:Number = NaN, centerY:Number = NaN, scale:Number = NaN, duration:Number = 1, transition:String = "easeInOut"):void
 		{
-			if (_viewPort === null || !viewPort.width || !viewPort.height)
+			if (_viewPort == null || !viewPort.width || !viewPort.height)
 			{
 				return;
 			}
