@@ -182,7 +182,7 @@ package cz.j4w.map
 				return;
 			}
 			
-			if (mask)
+			if (mask != null)
 			{
 				mask.x = 0;
 				mask.y = 0;
